@@ -1,0 +1,7 @@
+{
+  "name": "ClutchAI – Psychological Pressure Simulator",
+  "description": "An immersive performance training tool designed to simulate high-stakes interview stress and measure composure in real time.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
