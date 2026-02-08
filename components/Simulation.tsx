@@ -162,8 +162,14 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
   }, [mode, timeLeft, nextQuestion, isListening]);
 
   const toggleMic = () => {
-    if (isListening) stopListening();
-    else startListening();
+    if (isListening) {
+      stopListening();
+    } else {
+      if (micActivationRef.current === null) {
+        micActivationRef.current = Date.now();
+      }
+      startListening();
+    }
   };
 
   useEffect(() => {
