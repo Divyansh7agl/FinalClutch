@@ -30,6 +30,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
 
   const responsesRef = useRef<ResponseMetric[]>([]);
   const questionStartRef = useRef<number>(Date.now());
+  const micActivationRef = useRef<number | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const lastSpeechActivityRef = useRef<number>(Date.now());
 
@@ -51,7 +52,9 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
   }, [mode]);
 
   const processResponse = useCallback(() => {
-    const delay = speechStartTime ? speechStartTime - questionStartRef.current : (Date.now() - questionStartRef.current);
+    // Delay is now relative to mic activation, or 0 if mic never opened
+    const startRef = micActivationRef.current || Date.now();
+    const delay = speechStartTime ? speechStartTime - startRef : (Date.now() - startRef);
     const fullText = transcript + " " + interimTranscript;
     const wordCount = fullText.trim().split(/\s+/).length;
 
@@ -65,7 +68,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
     responsesRef.current.push({
       questionId: questions[currentQuestionIdx]?.id || 'unknown',
       questionText: questions[currentQuestionIdx]?.text || '',
-      delay,
+      delay: Math.max(0, delay),
       fillerCount: localFillerCount,
       wordCount: fullText.trim() === '' ? 0 : wordCount,
       transcript: fullText
@@ -128,6 +131,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
       setCurrentQuestionIdx(prev => prev + 1);
       resetTranscript();
       questionStartRef.current = Date.now();
+      micActivationRef.current = null;
     } else {
       stopListening();
       calculateFinalResults();
