@@ -64,6 +64,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
 
     responsesRef.current.push({
       questionId: questions[currentQuestionIdx]?.id || 'unknown',
+      questionText: questions[currentQuestionIdx]?.text || '',
       delay,
       fillerCount: localFillerCount,
       wordCount: fullText.trim() === '' ? 0 : wordCount,
@@ -74,7 +75,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
   const calculateFinalResults = useCallback(() => {
     const responses = responsesRef.current;
     if (responses.length === 0) {
-      onComplete({ clarity: 0, composure: 0, structure: 0, confidence: 0, fillerCount: 0, avgDelay: 0, transcript: '' });
+      onComplete({ clarity: 0, composure: 0, structure: 0, confidence: 0, fillerCount: 0, avgDelay: 0, transcript: '', responses: [] });
       return;
     }
 
@@ -116,7 +117,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
       confidence: Math.round(confidence),
       fillerCount: totalFillers,
       avgDelay: Math.round(avgDelay),
-      transcript: combinedTranscriptFinal
+      transcript: combinedTranscriptFinal,
+      responses: responses
     });
   }, [mode, onComplete]);
 

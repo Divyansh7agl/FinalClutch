@@ -10,6 +10,7 @@ export interface PerformanceMetrics {
   fillerCount: number;
   avgDelay: number;
   transcript?: string;
+  responses?: ResponseMetric[];
 }
 
 export interface QuestionData {
@@ -19,6 +20,7 @@ export interface QuestionData {
 
 export interface ResponseMetric {
   questionId: string;
+  questionText?: string;
   delay: number;
   fillerCount: number;
   wordCount: number;

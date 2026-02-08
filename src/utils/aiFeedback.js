@@ -91,39 +91,54 @@ export async function generateAIFeedback(
   fillerCount,
   confidenceScore,
   onToken = null,
-  mode = 'free'
+  mode = 'free',
+  responses = []
 ) {
-  console.log("AI function triggered");
-  const trimmedTranscript = (transcript || "").slice(0, 2000);
+  console.log("AI function triggered with data:", { delay, fillerCount, transcriptLength: transcript?.length, responseCount: responses.length });
+  const trimmedTranscript = (transcript || "").slice(0, 3000);
   const delaySec = (delay / 1000).toFixed(1);
+
+  const formattedResponses = responses.map((r, i) => `
+QUESTION ${i + 1}: ${r.questionText}
+TRANSCRIPT: "${r.transcript || 'NO SPEECH DETECTED'}"
+DELAY: ${(r.delay / 1000).toFixed(1)}s
+FILLERS: ${r.fillerCount}
+`).join("\n---\n");
 
   const systemPrompt = `You are an elite interview pressure coach. Your goal is to analyze the candidate's performance under stress.
 You must return your assessment in two parts:
 1. A qualitative coaching summary (plain text).
 2. A quantitative JSON score block.
 
-SCORING RUBRIC (0-100):
-- CLARITY: How articulate was the speech? High fillers (um, like) reduce this. Professional vocabulary increases this.
-- COMPOSURE: How steady was the pacing? Ideal delay after a question is 2-4 seconds. Silence over 6s is a penalty.
-- STRUCTURE: Did the answer have a logical flow (headline -> detail -> result)?
-- CONFIDENCE: Overall authority and lack of hesitation.
+CRITICAL FOCUS: 
+- JUDGE RELEVANCE: Does the transcript actually answer the specific questions asked? If not, penalize the STRUCTURE score heavily.
+- ANALYZE FILLERS: If filler count is 0, highlight this as a major strength. If it's high, give specific advice.
+- SILENT SESSIONS: If transcripts are empty, state that the candidate failed to participate.
 
-SPECIAL CASE: If the transcript is empty or contains no spoken words, acknowledge that the "session was silent" and give scores of 0 for clarity and structure, but note that the candidate did not participate.
+SCORING RUBRIC (0-100):
+- CLARITY: Articulation purity. High fillers reduce this.
+- COMPOSURE: Temporal mastery. Ideal delay is 2-4s. Silent gaps > 6s = penalty.
+- STRUCTURE: RELEVANCE AND FLOW. Did they answer the question?
+- CONFIDENCE: Overall authority.
 
 RESPONSE FORMAT:
-SUMMARY: (3-4 concise coaching sentences referencing the transcript and metrics)
+SUMMARY: (3-4 concise sentences referencing specific TRANSCRIPT details and QUESTION relevance)
 IMPROVEMENTS: (3 actionable bullet points)
 MOTIVATION: (1 short punchy line)
 
 SCORES: {"clarity": X, "composure": X, "structure": X, "confidence": X}`;
 
   const userPrompt = `Context:
-Transcript: "${trimmedTranscript}"
-Response Delay: ${delaySec} seconds
-Filler Word Count: ${fillerCount}
-Raw Simulation Score: ${confidenceScore}%
+FULL SESSION DATA:
+${formattedResponses}
 
-Analyze the candidate now.`;
+AGGREGATED METRICS:
+Total Transcript: "${trimmedTranscript}"
+Average Delay: ${delaySec} seconds
+Total Filler Count: ${fillerCount}
+Raw Simulation Heuristic Score: ${confidenceScore}%
+
+Analyze the candidate's responses for relevance and delivery now.`;
 
   // Attempt Groq if selected
   if (mode === 'groq' && GROQ_API_KEY) {

@@ -139,7 +139,8 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
               setAiFeedback(tokenText);
             }
           },
-          aiMode
+          aiMode,
+          metrics.responses
         );
 
         if (requestIdRef.current === requestId) {
