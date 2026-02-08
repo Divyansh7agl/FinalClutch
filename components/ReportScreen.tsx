@@ -143,7 +143,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
         );
 
         if (requestIdRef.current === requestId) {
-          const scoreMatch = text.match(/SCORES:\s*({.+})/);
+          const scoreMatch = text.match(/SCORES:\s*({.+})/i);
           if (scoreMatch) {
             try {
               const scored = JSON.parse(scoreMatch[1]);
@@ -156,7 +156,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
               });
             } catch (e) { }
           }
-          setAiFeedback(text.split("SCORES:")[0].trim());
+          setAiFeedback(text.split(/SCORES:/i)[0].trim());
         }
       } catch (error) {
         console.error('Failed to get AI feedback:', error);

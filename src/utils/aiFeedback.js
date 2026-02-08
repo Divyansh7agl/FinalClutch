@@ -95,32 +95,33 @@ export async function generateAIFeedback(
 ) {
   console.log("AI function triggered");
   const trimmedTranscript = (transcript || "").slice(0, 2000);
-  const prompt = [
-    "You are an interview coach.",
-    "Return plain text only until the very end.",
-    "Follow this exact structure:",
-    "SUMMARY:",
-    "(3-4 sentences reference delay, filler count, and confidence.)",
-    "IMPROVEMENTS:",
-    "- Three bullets with specific fixes.",
-    "MOTIVATION:",
-    "(One short line.)",
-    "",
-    "CRITICAL: At the very end, add a new line then exactly this JSON block on one line:",
-    'SCORES: {"clarity": X, "composure": X, "structure": X, "confidence": X}',
-    "",
-    "SCORING RUBRIC (0-100):",
-    "CLARITY: Articulation, absence of fillers, professional vocabulary.",
-    "COMPOSURE: Pacing (2.5-4s delay is optimal), emotional stability, confidence.",
-    "STRUCTURE: Logical transitions (because/however), use of examples, flow.",
-    "CONFIDENCE: Overall presence and impact of delivery.",
-    "",
-    "Context:",
-    `Transcript: ${trimmedTranscript}`,
-    `Delay (ms): ${delay}`,
-    `Filler words: ${fillerCount}`,
-    `Confidence score: ${confidenceScore}`,
-  ].join("\n");
+  const delaySec = (delay / 1000).toFixed(1);
+
+  const systemPrompt = `You are an elite interview pressure coach. Your goal is to analyze the candidate's performance under stress.
+You must return your assessment in two parts:
+1. A qualitative coaching summary (plain text).
+2. A quantitative JSON score block.
+
+SCORING RUBRIC (0-100):
+- CLARITY: How articulate was the speech? High fillers (um, like) reduce this. Professional vocabulary increases this.
+- COMPOSURE: How steady was the pacing? Ideal delay after a question is 2-4 seconds. Silence over 6s is a penalty.
+- STRUCTURE: Did the answer have a logical flow (headline -> detail -> result)?
+- CONFIDENCE: Overall authority and lack of hesitation.
+
+RESPONSE FORMAT:
+SUMMARY: (3-4 concise coaching sentences referencing the transcript and metrics)
+IMPROVEMENTS: (3 actionable bullet points)
+MOTIVATION: (1 short punchy line)
+
+SCORES: {"clarity": X, "composure": X, "structure": X, "confidence": X}`;
+
+  const userPrompt = `Context:
+Transcript: "${trimmedTranscript}"
+Response Delay: ${delaySec} seconds
+Filler Word Count: ${fillerCount}
+Raw Simulation Score: ${confidenceScore}%
+
+Analyze the candidate now.`;
 
   // Attempt Groq if selected
   if (mode === 'groq' && GROQ_API_KEY) {
@@ -133,7 +134,10 @@ export async function generateAIFeedback(
         },
         body: JSON.stringify({
           model: GROQ_MODEL,
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
           temperature: 0.1,
           stream: false
         }),
@@ -142,7 +146,7 @@ export async function generateAIFeedback(
       if (response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content || "";
-        if (onToken) onToken(text.split("SCORES:")[0]);
+        if (onToken) onToken(text.split(/SCORES:/i)[0]);
         return text;
       }
     } catch (error) {
@@ -158,8 +162,8 @@ export async function generateAIFeedback(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: OLLAMA_MODEL,
-          system: "You are an interview coach. You MUST provide critical feedback. ALWAYS end your response with exactly one line: SCORES: {\"clarity\": X, \"composure\": X, \"structure\": X, \"confidence\": X}",
-          prompt,
+          system: systemPrompt,
+          prompt: userPrompt,
           stream: !!onToken,
           options: { temperature: 0.1, num_ctx: 2048, num_predict: 300 }
         }),
@@ -204,14 +208,16 @@ export async function generateAIFeedback(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [
+            { role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }
+          ],
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        if (onToken) onToken(text.split("SCORES:")[0]);
+        if (onToken) onToken(text.split(/SCORES:/i)[0]);
         return text;
       }
     } catch (error) {
