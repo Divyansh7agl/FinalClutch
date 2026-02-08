@@ -51,7 +51,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, onComplete, onQuit }) => 
   }, [mode]);
 
   const processResponse = useCallback(() => {
-    const delay = speechStartTime ? speechStartTime - questionStartRef.current : 10000;
+    const delay = speechStartTime ? speechStartTime - questionStartRef.current : (Date.now() - questionStartRef.current);
     const fullText = transcript + " " + interimTranscript;
     const wordCount = fullText.trim().split(/\s+/).length;
 

@@ -108,6 +108,8 @@ SCORING RUBRIC (0-100):
 - STRUCTURE: Did the answer have a logical flow (headline -> detail -> result)?
 - CONFIDENCE: Overall authority and lack of hesitation.
 
+SPECIAL CASE: If the transcript is empty or contains no spoken words, acknowledge that the "session was silent" and give scores of 0 for clarity and structure, but note that the candidate did not participate.
+
 RESPONSE FORMAT:
 SUMMARY: (3-4 concise coaching sentences referencing the transcript and metrics)
 IMPROVEMENTS: (3 actionable bullet points)
