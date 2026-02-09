@@ -14,7 +14,7 @@ const ModeSelect: React.FC<ModeSelectProps> = ({ onSelect, onHome }) => {
         <h1 className="text-xl font-black tracking-tighter text-white opacity-50 italic">CLUTCH<span className="text-blue-500">AI</span></h1>
       </div>
       <h2 className="mb-12 text-xs font-black tracking-[0.4em] text-slate-500 uppercase">Select Training Protocol</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl w-full">
         <button
           onClick={() => onSelect('viva')}
@@ -45,9 +45,39 @@ const ModeSelect: React.FC<ModeSelectProps> = ({ onSelect, onHome }) => {
             Initiate Burn <span className="ml-2">→</span>
           </div>
         </button>
+
+        <button
+          onClick={() => onSelect('ai-interview')}
+          className="glass-card group flex flex-col items-start p-8 text-left rounded-2xl transition-all duration-300 hover:border-emerald-500/50 hover:translate-y-[-2px] hover:shadow-[0_0_50px_rgba(16,185,129,0.18)] relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-4 text-6xl opacity-10 group-hover:opacity-20 transition-opacity font-serif italic">A</div>
+          <span className="mb-4 inline-flex items-center px-3 py-1 text-xs font-bold tracking-widest text-emerald-400 uppercase bg-emerald-400/10 rounded-full">Neural Interaction</span>
+          <h3 className="text-3xl font-bold mb-3 text-white">AI Interview</h3>
+          <p className="text-slate-400 text-lg leading-relaxed">
+            Conversational AI challenge. Real-time voice interaction with dynamic follow-up questions.
+          </p>
+          <div className="mt-8 text-sm font-semibold text-emerald-500 group-hover:translate-x-1 transition-transform inline-flex items-center">
+            Enter Neural Link <span className="ml-2">→</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSelect('custom')}
+          className="glass-card group flex flex-col items-start p-8 text-left rounded-2xl transition-all duration-300 hover:border-orange-500/50 hover:translate-y-[-2px] hover:shadow-[0_0_50px_rgba(249,115,22,0.18)] relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-4 text-6xl opacity-10 group-hover:opacity-20 transition-opacity font-serif italic text-orange-500">C</div>
+          <span className="mb-4 inline-flex items-center px-3 py-1 text-xs font-bold tracking-widest text-orange-400 uppercase bg-orange-400/10 rounded-full">New Interface</span>
+          <h3 className="text-3xl font-bold mb-3 text-white">Custom Mode</h3>
+          <p className="text-slate-400 text-lg leading-relaxed">
+            Configure your own battlefield. Specify roles and topics for a hyper-targeted training session.
+          </p>
+          <div className="mt-8 text-sm font-semibold text-orange-500 group-hover:translate-x-1 transition-transform inline-flex items-center">
+            Configure Link <span className="ml-2">→</span>
+          </div>
+        </button>
       </div>
-      
-      <button 
+
+      <button
         onClick={onHome}
         className="mt-12 text-slate-500 hover:text-white transition-colors uppercase tracking-[0.3em] text-[10px] font-black px-6 py-3 border border-slate-800 rounded-full"
       >

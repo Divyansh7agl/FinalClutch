@@ -1,6 +1,11 @@
 
-export type AppState = 'home' | 'mode-select' | 'simulation' | 'report';
-export type SimulationMode = 'viva' | 'panic';
+export type AppState = 'home' | 'mode-select' | 'custom-setup' | 'simulation' | 'report';
+export type SimulationMode = 'viva' | 'panic' | 'ai-interview' | 'custom';
+
+export interface CustomContext {
+  role: string;
+  topic: string;
+}
 
 export interface PerformanceMetrics {
   clarity: number;

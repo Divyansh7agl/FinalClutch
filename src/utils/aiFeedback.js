@@ -21,11 +21,11 @@ let useFreeMode = true;
 let useOllamaMode = false;
 
 export function setUseFreeMode(value) {
-  // Deprecated for deployment: defaulted to Groq
+  // Deprecated for deployment: defaulted to standard AI
 }
 
 export function setUseOllamaMode(value) {
-  // Deprecated for deployment: defaulted to Groq
+  // Deprecated for deployment: defaulted to standard AI
 }
 
 function buildLocalFeedback(transcript, delay, fillerCount, confidenceScore) {
@@ -140,7 +140,7 @@ Raw Simulation Heuristic Score: ${confidenceScore}%
 
 Analyze the candidate's responses for relevance and delivery now.`;
 
-  // Attempt Groq if selected
+  // Attempt Primary AI if selected
   if (mode === 'groq' && GROQ_API_KEY) {
     try {
       const response = await fetch(GROQ_URL, {
@@ -167,7 +167,7 @@ Analyze the candidate's responses for relevance and delivery now.`;
         return text;
       }
     } catch (error) {
-      console.warn("Groq API error, falling back...");
+      console.warn("Primary AI API error, falling back...");
     }
   }
 
@@ -296,7 +296,7 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
         return text;
       }
     } catch (e) {
-      console.error("Groq chat error", e);
+      console.error("AI chat error", e);
     }
   }
 
@@ -349,6 +349,102 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
   const fallbackMsg = "I'm currently in offline mode. Based on your transcript, focus on reducing those ${fillerCount} fillers and keeping your response delay under 2 seconds. What else would you like to know?";
   if (onToken) onToken(fallbackMsg);
   return fallbackMsg;
+}
+
+export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq') {
+  const systemPrompt = `You are an elite interview architect. Generate ${count} intense, psychological, and challenging interview questions.
+  The context is: ${context}.
+  
+  FORMAT: Return ONLY a JSON array of strings. No introductory text, no markdown code blocks.
+  Example: ["Question 1", "Question 2"]`;
+
+  if (mode === 'groq' && GROQ_API_KEY) {
+    try {
+      const response = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Generate the questions now." }
+          ],
+          temperature: 0.7,
+          stream: false
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content || "";
+        // Clean up potential markdown formatting if the model ignored instructions
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+          const questions = JSON.parse(cleanedText);
+          if (Array.isArray(questions)) {
+            return questions.map((q, i) => ({ id: `ai-${Date.now()}-${i}`, text: q }));
+          }
+        } catch (e) {
+          console.error("Failed to parse AI questions JSON", e, cleanedText);
+        }
+      }
+    } catch (error) {
+      console.warn("AI API error generating questions:", error);
+    }
+  }
+  return null;
+}
+
+export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq') {
+  const historyText = history.map((h, i) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}`).join('\n\n');
+
+  const systemPrompt = `You are a rigorous, elite AI Interviewer at a top-tier firm like Wellfound or OpenAI. 
+  Your goal is to conduct a live, conversational interview. 
+  
+  CURRENT CONVERSATION HISTORY:
+  ${historyText}
+  
+  TASK:
+  - If the candidate's last answer was brief or lacked detail, ask a pointed follow-up question to dig deeper into that specific point.
+  - If they answered well, move to a related but more challenging technical or behavioral topic within the context of "${context}".
+  - Keep the question concise, sharp, and provocative.
+  - DO NOT repeat questions.
+  - DO NOT provide feedback yet, just ask the NEXT question.
+
+  FORMAT: Return ONLY a single string containing the question. No introductory text.`;
+
+  if (mode === 'groq' && GROQ_API_KEY) {
+    try {
+      const response = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Generate the next conversational follow-up question now." }
+          ],
+          temperature: 0.8,
+          stream: false
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content || "";
+        return text.trim();
+      }
+    } catch (error) {
+      console.warn("AI API error generating next question:", error);
+    }
+  }
+  return "Could you tell me more about your experience handling conflict in a high-stakes environment?";
 }
 
 export async function generateAIScore(transcript, delay, fillerCount) {

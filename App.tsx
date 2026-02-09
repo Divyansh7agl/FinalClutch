@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, SimulationMode, PerformanceMetrics, SessionData } from './types';
+import { AppState, SimulationMode, PerformanceMetrics, SessionData, CustomContext } from './types';
 import HomeScreen from './components/HomeScreen';
 import ModeSelect from './components/ModeSelect';
 import Simulation from './components/Simulation';
 import ReportScreen from './components/ReportScreen';
+import CustomSetup from './components/CustomSetup';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<AppState>('home');
   const [mode, setMode] = useState<SimulationMode | null>(null);
   const [lastMetrics, setLastMetrics] = useState<PerformanceMetrics | null>(null);
   const [history, setHistory] = useState<SessionData[]>([]);
+  const [customContext, setCustomContext] = useState<CustomContext | null>(null);
 
   // Load history from local storage on mount
   useEffect(() => {
@@ -31,10 +33,20 @@ const App: React.FC = () => {
   const handleBackToHome = () => {
     setCurrentScreen('home');
     setMode(null);
+    setCustomContext(null);
   };
 
   const handleModeSelect = (selectedMode: SimulationMode) => {
     setMode(selectedMode);
+    if (selectedMode === 'custom') {
+      setCurrentScreen('custom-setup');
+    } else {
+      setCurrentScreen('simulation');
+    }
+  };
+
+  const handleCustomConfirm = (context: CustomContext) => {
+    setCustomContext(context);
     setCurrentScreen('simulation');
   };
 
@@ -65,18 +77,22 @@ const App: React.FC = () => {
       {currentScreen === 'mode-select' && (
         <ModeSelect onSelect={handleModeSelect} onHome={handleBackToHome} />
       )}
+      {currentScreen === 'custom-setup' && (
+        <CustomSetup onConfirm={handleCustomConfirm} onBack={() => setCurrentScreen('mode-select')} />
+      )}
       {currentScreen === 'simulation' && mode && (
-        <Simulation 
-          mode={mode} 
-          onComplete={handleSimulationComplete} 
+        <Simulation
+          mode={mode}
+          customContext={customContext || undefined}
+          onComplete={handleSimulationComplete}
           onQuit={() => setCurrentScreen('mode-select')}
         />
       )}
       {currentScreen === 'report' && lastMetrics && (
-        <ReportScreen 
-          metrics={lastMetrics} 
+        <ReportScreen
+          metrics={lastMetrics}
           previousMetrics={history.length > 1 ? history[1].metrics : null}
-          onRetry={handleRetry} 
+          onRetry={handleRetry}
           onBack={handleBackToModes}
           onHome={handleBackToHome}
         />
