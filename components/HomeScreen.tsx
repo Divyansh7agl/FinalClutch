@@ -24,7 +24,7 @@ const BackgroundSimulator: React.FC = () => {
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       {/* Dynamic Grid */}
       <div className="absolute bottom-0 left-[-25%] right-[-25%] h-full bg-grid-animate opacity-[0.15] translate-z-0" />
-      
+
       {/* Upward Drifting Bubbles */}
       {particles.map((p) => (
         <div
@@ -48,7 +48,7 @@ const BackgroundSimulator: React.FC = () => {
       {/* Atmospheric Glows */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full" />
-      
+
       <div className="scanline" />
 
       {/* Solid Vignette */}
@@ -284,24 +284,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStart }) => {
           </div>
         </div>
 
-        {/* Footer Credits */}
-        <div className="mt-32 pt-16 border-t border-white/5 text-center flex flex-col items-center space-y-8">
-          <div className="flex flex-wrap justify-center gap-12 opacity-30">
-             <div className="flex flex-col items-center space-y-1">
-               <div className="text-[9px] font-black tracking-[0.3em] uppercase text-white">NeuralLink™</div>
-               <div className="text-[8px] font-bold text-slate-500 uppercase">Latency 0.4ms</div>
-             </div>
-             <div className="flex flex-col items-center space-y-1">
-               <div className="text-[9px] font-black tracking-[0.3em] uppercase text-white">StressEngine®</div>
-               <div className="text-[8px] font-bold text-slate-500 uppercase">Load: Stable</div>
-             </div>
-             <div className="flex flex-col items-center space-y-1">
-               <div className="text-[9px] font-black tracking-[0.3em] uppercase text-white">ComposureMap™</div>
-               <div className="text-[8px] font-bold text-slate-500 uppercase">Accuracy 99.8%</div>
-             </div>
-          </div>
-          <p className="text-slate-700 text-[9px] font-black uppercase tracking-[0.6em] mt-8">System ID: CLUTCH-T2 — Performance Terminal</p>
-        </div>
       </div>
     </div>
   );
