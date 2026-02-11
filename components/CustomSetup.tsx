@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CustomContext } from '../types';
+import { CustomContext, DifficultyLevel } from '../types';
 
 interface CustomSetupProps {
     onConfirm: (context: CustomContext) => void;
@@ -10,11 +10,12 @@ interface CustomSetupProps {
 const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
     const [role, setRole] = useState('');
     const [topic, setTopic] = useState('');
+    const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (role.trim() && topic.trim()) {
-            onConfirm({ role, topic });
+            onConfirm({ role, topic, difficulty });
         }
     };
 
@@ -57,6 +58,42 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
                             />
                         </div>
 
+                        <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500 ml-1">Difficulty Level</label>
+                            <div className="grid grid-cols-3 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setDifficulty('easy')}
+                                    className={`px-6 py-4 rounded-2xl font-bold uppercase tracking-wider text-xs transition-all ${difficulty === 'easy'
+                                            ? 'bg-green-500 text-black shadow-[0_0_30px_rgba(34,197,94,0.4)] scale-105'
+                                            : 'bg-black/40 border border-white/5 text-slate-500 hover:text-white hover:border-green-500/30'
+                                        }`}
+                                >
+                                    Easy
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDifficulty('medium')}
+                                    className={`px-6 py-4 rounded-2xl font-bold uppercase tracking-wider text-xs transition-all ${difficulty === 'medium'
+                                            ? 'bg-orange-500 text-black shadow-[0_0_30px_rgba(249,115,22,0.4)] scale-105'
+                                            : 'bg-black/40 border border-white/5 text-slate-500 hover:text-white hover:border-orange-500/30'
+                                        }`}
+                                >
+                                    Medium
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDifficulty('hard')}
+                                    className={`px-6 py-4 rounded-2xl font-bold uppercase tracking-wider text-xs transition-all ${difficulty === 'hard'
+                                            ? 'bg-red-500 text-black shadow-[0_0_30px_rgba(239,68,68,0.4)] scale-105'
+                                            : 'bg-black/40 border border-white/5 text-slate-500 hover:text-white hover:border-red-500/30'
+                                        }`}
+                                >
+                                    Hard
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="pt-6 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
                             <button
                                 type="submit"
@@ -82,5 +119,6 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
         </div>
     );
 };
+
 
 export default CustomSetup;

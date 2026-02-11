@@ -111,12 +111,14 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}`
           : "High-Pressure Executive Leadership Interview";
 
+        const difficulty = customContext?.difficulty || 'medium';
+
         if (mode === 'ai-interview' || mode === 'custom') {
           // Both AI and Custom modes start with one generated question and continue conversationally
-          const firstQuestion = await generateNextAIQuestion([], combinedContext);
+          const firstQuestion = await generateNextAIQuestion([], combinedContext, 'groq', difficulty);
           qs = [{ id: `ai-start-${Date.now()}`, text: firstQuestion }];
         } else {
-          const aiQuestions = await generateAIQuestions(combinedContext, mode === 'panic' ? 10 : 3);
+          const aiQuestions = await generateAIQuestions(combinedContext, mode === 'panic' ? 10 : 3, 'groq', difficulty);
           if (aiQuestions && aiQuestions.length > 0) {
             qs = aiQuestions;
           } else {
@@ -237,7 +239,9 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}`
           : "General Professional Interview";
 
-        const nextQ = await generateNextAIQuestion(newHistory, combinedContext);
+        const difficulty = customContext?.difficulty || 'medium';
+
+        const nextQ = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
         const nextQuestionData: QuestionData = { id: `ai-${Date.now()}`, text: nextQ };
 
         setQuestions(prev => [...prev, nextQuestionData]);

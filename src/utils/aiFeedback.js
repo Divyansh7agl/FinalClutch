@@ -351,9 +351,20 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
   return fallbackMsg;
 }
 
-export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq') {
-  const systemPrompt = `You are an elite interview architect. Generate ${count} intense, psychological, and challenging interview questions.
+export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq', difficulty = 'medium') {
+  const difficultyInstructions = {
+    easy: "Generate beginner-friendly, straightforward questions focusing on fundamental concepts and basic scenarios. Keep questions simple and accessible.",
+    medium: "Generate standard interview questions with moderate complexity and balanced difficulty.",
+    hard: "Generate advanced, challenging questions with complex edge cases, deep technical scenarios, and high-pressure situations. Make them intellectually demanding."
+  };
+
+  const difficultyInstruction = difficultyInstructions[difficulty] || difficultyInstructions.medium;
+
+  const systemPrompt = `You are an elite interview architect. Generate ${count} interview questions.
   The context is: ${context}.
+  
+  DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+  ${difficultyInstruction}
   
   FORMAT: Return ONLY a JSON array of strings. No introductory text, no markdown code blocks.
   Example: ["Question 1", "Question 2"]`;
@@ -398,11 +409,22 @@ export async function generateAIQuestions(context = "General High-Pressure Inter
   return null;
 }
 
-export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq') {
+export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq', difficulty = 'medium') {
   const historyText = history.map((h, i) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}`).join('\n\n');
+
+  const difficultyInstructions = {
+    easy: "Keep questions beginner-friendly and straightforward. Focus on basic concepts and avoid complex scenarios.",
+    medium: "Maintain standard interview difficulty with moderate complexity.",
+    hard: "Make questions challenging and intellectually demanding. Include complex scenarios, edge cases, and deep technical probing."
+  };
+
+  const difficultyInstruction = difficultyInstructions[difficulty] || difficultyInstructions.medium;
 
   const systemPrompt = `You are a rigorous, elite AI Interviewer at a top-tier firm like Wellfound or OpenAI. 
   Your goal is to conduct a live, conversational interview. 
+  
+  DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+  ${difficultyInstruction}
   
   CURRENT CONVERSATION HISTORY:
   ${historyText}

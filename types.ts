@@ -1,10 +1,12 @@
 
 export type AppState = 'home' | 'mode-select' | 'custom-setup' | 'simulation' | 'report';
 export type SimulationMode = 'viva' | 'panic' | 'ai-interview' | 'custom';
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 export interface CustomContext {
   role: string;
   topic: string;
+  difficulty: DifficultyLevel;
 }
 
 export interface PerformanceMetrics {
