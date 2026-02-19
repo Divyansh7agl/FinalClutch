@@ -5,6 +5,7 @@ import { QUESTIONS, FILLER_WORDS, SCORING } from '../constants';
 import PressureMeter from './PressureMeter';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { generateAIQuestions, generateNextAIQuestion } from '../src/utils/aiFeedback';
+import { speakWithGroq, stopGroqTTS } from '../src/utils/groqTTS';
 
 interface SimulationProps {
   mode: SimulationMode;
@@ -46,24 +47,58 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     isListeningRef.current = isListening;
   }, [isListening]);
 
-  const speakQuestion = useCallback((text: string) => {
-    if (!window.speechSynthesis || !text) return;
-
-    // Stop any current speech
+  // Browser SpeechSynthesis fallback — used only if Groq TTS fails
+  const speakWithBrowser = useCallback((text: string, onStart: () => void, onEnd: () => void) => {
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.95; // Slightly slower for clarity
-    utterance.pitch = 1;
+    const doSpeak = () => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = [
+        'Google UK English Female', 'Google UK English Male',
+        'Microsoft Aria Online (Natural) - English (United States)',
+        'Microsoft Guy Online (Natural) - English (United States)',
+        'Google US English',
+      ];
+      for (const name of preferred) {
+        const match = voices.find(v => v.name === name);
+        if (match) { utterance.voice = match; break; }
+      }
+      utterance.rate = 0.92;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      utterance.onstart = onStart;
+      utterance.onend = onEnd;
+      utterance.onerror = () => onEnd();
+      window.speechSynthesis.speak(utterance);
+    };
 
-    utterance.onstart = () => {
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        doSpeak();
+      };
+    }
+  }, []);
+
+  const speakQuestion = useCallback(async (text: string) => {
+    if (!text) return;
+
+    // Stop any current playback
+    stopGroqTTS();
+    window.speechSynthesis?.cancel();
+
+    if (isListeningRef.current) stopListening();
+
+    const onStart = () => {
       setIsAISpeaking(true);
       if (isListeningRef.current) stopListening();
     };
 
-    utterance.onend = () => {
+    const onEnd = () => {
       setIsAISpeaking(false);
-      // Auto-start listening after AI finishes speaking
       setTimeout(() => {
         if (micActivationRef.current === null) {
           micActivationRef.current = Date.now();
@@ -72,16 +107,21 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       }, 300);
     };
 
-    utterance.onerror = (e) => {
-      console.error("Speech error:", e);
+    // Try Groq TTS first (high quality Orpheus/PlayAI voice)
+    const usedGroq = await speakWithGroq(text, onStart, onEnd, () => {
       setIsAISpeaking(false);
-    };
+    });
 
-    window.speechSynthesis.speak(utterance);
-  }, [stopListening, startListening]);
+    // Fall back to browser SpeechSynthesis if Groq TTS unavailable
+    if (!usedGroq) {
+      console.log('[TTS] Falling back to browser SpeechSynthesis');
+      speakWithBrowser(text, onStart, onEnd);
+    }
+  }, [stopListening, startListening, speakWithBrowser]);
 
   useEffect(() => {
     return () => {
+      stopGroqTTS();
       if (window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
