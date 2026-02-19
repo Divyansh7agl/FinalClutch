@@ -42,10 +42,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
   const lastSpeechActivityRef = useRef<number>(Date.now());
   const hasInitializedRef = useRef(false);
 
-  const isListeningRef = useRef(isListening);
-  useEffect(() => {
-    isListeningRef.current = isListening;
-  }, [isListening]);
+
 
   // Browser SpeechSynthesis fallback — used only if Groq TTS fails
   const speakWithBrowser = useCallback((text: string, onStart: () => void, onEnd: () => void) => {
@@ -86,15 +83,18 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
   const speakQuestion = useCallback(async (text: string) => {
     if (!text) return;
 
-    // Stop any current playback
+    // Stop any current playback and mic immediately
     stopGroqTTS();
     window.speechSynthesis?.cancel();
+    stopListening();
 
-    if (isListeningRef.current) stopListening();
+    // Mark AI as speaking RIGHT NOW — before the network fetch — so the
+    // mic button stays disabled during the Groq TTS loading window
+    setIsAISpeaking(true);
 
     const onStart = () => {
+      // AI is already marked as speaking; mic is already stopped
       setIsAISpeaking(true);
-      if (isListeningRef.current) stopListening();
     };
 
     const onEnd = () => {
@@ -107,10 +107,12 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       }, 300);
     };
 
-    // Try Groq TTS first (high quality Orpheus/PlayAI voice)
-    const usedGroq = await speakWithGroq(text, onStart, onEnd, () => {
+    const onError = () => {
       setIsAISpeaking(false);
-    });
+    };
+
+    // Try Groq TTS first (high quality Orpheus/PlayAI voice)
+    const usedGroq = await speakWithGroq(text, onStart, onEnd, onError);
 
     // Fall back to browser SpeechSynthesis if Groq TTS unavailable
     if (!usedGroq) {
