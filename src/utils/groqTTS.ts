@@ -10,8 +10,8 @@ const GROQ_API_KEY: string =
 
 const GROQ_TTS_URL = 'https://api.groq.com/openai/v1/audio/speech';
 
-// Best voice for an authoritative AI interviewer: deep, measured, professional
-const DEFAULT_VOICE = 'Fritz-PlayAI';
+// Best voice for an authoritative AI interviewer: bold, clear, neutral American English
+const DEFAULT_VOICE = 'Thunder-PlayAI';
 const TTS_MODEL = 'playai-tts';
 
 let currentAudio: HTMLAudioElement | null = null;
