@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, SimulationMode, PerformanceMetrics, SessionData, CustomContext, DifficultyLevel } from './types';
+import { AppState, SimulationMode, PerformanceMetrics, SessionData, CustomContext, DifficultyLevel, ResumeContext } from './types';
 import HomeScreen from './components/HomeScreen';
 import ModeSelect from './components/ModeSelect';
 import VivaSetup from './components/VivaSetup';
@@ -9,8 +9,9 @@ import AIInterviewSetup from './components/AIInterviewSetup';
 import Simulation from './components/Simulation';
 import ReportScreen from './components/ReportScreen';
 import CustomSetup from './components/CustomSetup';
+import FollowupSetup from './components/FollowupSetup';
 
-type AppScreen = AppState | 'viva-setup' | 'panic-setup' | 'ai-interview-setup';
+type AppScreen = AppState | 'viva-setup' | 'panic-setup' | 'ai-interview-setup' | 'followup-setup';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
@@ -19,6 +20,7 @@ const App: React.FC = () => {
   const [lastMetrics, setLastMetrics] = useState<PerformanceMetrics | null>(null);
   const [history, setHistory] = useState<SessionData[]>([]);
   const [customContext, setCustomContext] = useState<CustomContext | null>(null);
+  const [aiResumeContext, setAiResumeContext] = useState<ResumeContext | null>(null);
 
   // Load history from local storage on mount
   useEffect(() => {
@@ -41,10 +43,14 @@ const App: React.FC = () => {
     setMode(null);
     setDifficulty('medium');
     setCustomContext(null);
+    setAiResumeContext(null);
   };
 
   const handleModeSelect = (selectedMode: SimulationMode) => {
     setMode(selectedMode);
+    if (selectedMode !== 'ai-interview') {
+      setAiResumeContext(null);
+    }
     // Route to appropriate setup screen
     switch (selectedMode) {
       case 'viva':
@@ -59,7 +65,15 @@ const App: React.FC = () => {
       case 'custom':
         setCurrentScreen('custom-setup');
         break;
+      case 'followup':
+        setCurrentScreen('followup-setup');
+        break;
     }
+  };
+
+  const handleFollowupSetupConfirm = (selectedDifficulty: DifficultyLevel) => {
+    setDifficulty(selectedDifficulty);
+    setCurrentScreen('simulation');
   };
 
   const handleVivaSetupConfirm = (selectedDifficulty: DifficultyLevel) => {
@@ -72,8 +86,9 @@ const App: React.FC = () => {
     setCurrentScreen('simulation');
   };
 
-  const handleAIInterviewSetupConfirm = (selectedDifficulty: DifficultyLevel) => {
+  const handleAIInterviewSetupConfirm = (selectedDifficulty: DifficultyLevel, resumeContext?: ResumeContext) => {
     setDifficulty(selectedDifficulty);
+    setAiResumeContext(resumeContext || null);
     setCurrentScreen('simulation');
   };
 
@@ -102,6 +117,7 @@ const App: React.FC = () => {
 
   const handleBackToModes = () => {
     setCurrentScreen('mode-select');
+    setAiResumeContext(null);
   };
 
   return (
@@ -122,10 +138,22 @@ const App: React.FC = () => {
       {currentScreen === 'custom-setup' && (
         <CustomSetup onConfirm={handleCustomConfirm} onBack={() => setCurrentScreen('mode-select')} />
       )}
+      {currentScreen === 'followup-setup' && (
+        <FollowupSetup onConfirm={handleFollowupSetupConfirm} onBack={() => setCurrentScreen('mode-select')} />
+      )}
       {currentScreen === 'simulation' && mode && (
         <Simulation
           mode={mode}
-          customContext={mode === 'custom' ? customContext || undefined : { role: '', topic: '', difficulty }}
+          customContext={
+            mode === 'custom'
+              ? customContext || undefined
+              : {
+                  role: '',
+                  topic: '',
+                  difficulty,
+                  resumeContext: mode === 'ai-interview' ? aiResumeContext || undefined : undefined,
+                }
+          }
           onComplete={handleSimulationComplete}
           onQuit={() => setCurrentScreen('mode-select')}
         />

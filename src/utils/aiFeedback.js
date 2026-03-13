@@ -352,6 +352,7 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
 }
 
 export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq', difficulty = 'medium') {
+  const hasResumeContext = /candidate resume context:/i.test(context);
   const difficultyInstructions = {
     easy: "Generate beginner-friendly, straightforward questions focusing on fundamental concepts and basic scenarios. Keep questions simple and accessible.",
     medium: "Generate standard interview questions with moderate complexity and balanced difficulty.",
@@ -365,6 +366,10 @@ export async function generateAIQuestions(context = "General High-Pressure Inter
   
   DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
   ${difficultyInstruction}
+
+  ${hasResumeContext
+      ? 'RESUME PRIORITY: The context includes the candidate resume. Base questions on the candidate\'s real skills, projects, tools, education, and achievements. Ask specific, experience-grounded questions.'
+      : 'Ask broadly relevant interview questions for the given context.'}
   
   FORMAT: Return ONLY a JSON array of strings. No introductory text, no markdown code blocks.
   Example: ["Question 1", "Question 2"]`;
@@ -411,6 +416,7 @@ export async function generateAIQuestions(context = "General High-Pressure Inter
 
 export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq', difficulty = 'medium') {
   const historyText = history.map((h, i) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}`).join('\n\n');
+  const hasResumeContext = /candidate resume context:/i.test(context);
 
   const difficultyInstructions = {
     easy: "Keep questions beginner-friendly and straightforward. Focus on basic concepts and avoid complex scenarios.",
@@ -425,6 +431,10 @@ export async function generateNextAIQuestion(history = [], context = "General Hi
   
   DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
   ${difficultyInstruction}
+
+  ${hasResumeContext
+      ? 'RESUME PRIORITY: The interview context includes a candidate resume. Keep follow-up questions tightly aligned to resume claims (projects, tech stack, impact metrics, leadership examples).'
+      : 'Keep follow-up questions aligned to the provided interview context.'}
   
   CURRENT CONVERSATION HISTORY:
   ${historyText}
@@ -467,6 +477,68 @@ export async function generateNextAIQuestion(history = [], context = "General Hi
     }
   }
   return "Could you tell me more about your experience handling conflict in a high-stakes environment?";
+}
+
+export async function generateFollowupChallenge(previousQuestion = '', previousAnswer = '', difficulty = 'medium') {
+  const difficultyInstructions = {
+    easy: "Ask a probing follow-up that gently challenges one part of the answer. Stay direct but not harsh.",
+    medium: "Ask a sharp follow-up that exposes a gap, contradiction, or vague claim in the answer. Be direct and specific.",
+    hard: "Be a ruthless interrogator. Find the weakest point in the answer — an assumption, a vague claim, a missing metric — and attack it with a single, pointed question. No warmth."
+  };
+  const difficultyInstruction = difficultyInstructions[difficulty] || difficultyInstructions.medium;
+
+  const hasHistory = previousQuestion && previousAnswer;
+
+  const systemPrompt = `You are a hostile, adversarial interviewer. Your job is NOT to be supportive — your job is to pressure-test every answer like a skeptical VC, a tough hiring manager, or a court examiner.
+
+DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+${difficultyInstruction}
+
+${hasHistory
+  ? `PREVIOUS QUESTION: "${previousQuestion}"
+CANDIDATE'S ANSWER: "${previousAnswer}"
+
+Your task: Generate ONE sharp, challenging follow-up question that:
+- Directly challenges a specific claim, assumption, or vague statement in their answer
+- Demands concrete evidence, metrics, or examples they failed to provide
+- Exposes a logical gap or contradiction
+- Is terse, direct, and uncomfortable — this is a pressure test
+- Does NOT repeat the previous question`
+  : `Generate ONE sharp opening interview question that immediately puts the candidate on the spot. Make it specific, provocative, and hard to dodge. No warm-up.`}
+
+FORMAT: Return ONLY a single string — the question itself. No intro text, no explanation.`;
+
+  if (GROQ_API_KEY) {
+    try {
+      const response = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Generate the follow-up challenge question now." }
+          ],
+          temperature: 0.85,
+          stream: false
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content || "";
+        return text.trim();
+      }
+    } catch (error) {
+      console.warn("AI API error generating follow-up challenge:", error);
+    }
+  }
+  return previousAnswer
+    ? "That answer was vague. Give me one concrete example with actual numbers to back it up."
+    : "Walk me through a time you failed under pressure — and tell me exactly what you did wrong.";
 }
 
 export async function generateAIScore(transcript, delay, fillerCount) {

@@ -1,12 +1,19 @@
 
 export type AppState = 'home' | 'mode-select' | 'custom-setup' | 'simulation' | 'report';
-export type SimulationMode = 'viva' | 'panic' | 'ai-interview' | 'custom';
+export type SimulationMode = 'viva' | 'panic' | 'ai-interview' | 'custom' | 'followup';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 export interface CustomContext {
   role: string;
   topic: string;
   difficulty: DifficultyLevel;
+  resumeContext?: ResumeContext;
+}
+
+export interface ResumeContext {
+  fileName: string;
+  resumeText: string;
+  uploadedAt: number;
 }
 
 export interface PerformanceMetrics {

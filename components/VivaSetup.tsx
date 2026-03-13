@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { DifficultyLevel } from '../types';
+import Logo from './Logo';
 
 interface VivaSetupProps {
     onConfirm: (difficulty: DifficultyLevel) => void;
@@ -17,16 +18,17 @@ const VivaSetup: React.FC<VivaSetupProps> = ({ onConfirm, onBack }) => {
     return (
         <div className="flex flex-col items-center justify-center min-h-full py-16 px-6 bg-[#0a0c10]">
             <div className="mb-8 text-center">
-                <h1 className="text-xl font-black tracking-tighter text-white opacity-50 italic uppercase">Viva.Protocol</h1>
+                <Logo size="md" />
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Viva Setup</p>
             </div>
 
-            <div className="max-w-2xl w-full glass-card p-12 rounded-[2.5rem] border border-blue-500/20 shadow-[0_0_80px_rgba(59,130,246,0.05)] relative overflow-hidden">
+            <div className="max-w-2xl w-full glass-card p-12 rounded-[2.5rem] border border-blue-500/20 shadow-[0_20px_50px_rgba(59,130,246,0.10)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 text-8xl opacity-5 font-serif italic text-blue-500">V</div>
 
                 <div className="relative z-10">
                     <h2 className="text-3xl font-bold mb-2 text-white">Viva Mode Setup</h2>
                     <p className="text-slate-500 mb-10 text-sm font-medium tracking-wide">
-                        Standard interview protocol with 3 questions. Select your difficulty level to begin.
+                        Practice a structured three-question interview to improve clarity and confidence.
                     </p>
 
                     <div className="space-y-8">
@@ -69,7 +71,7 @@ const VivaSetup: React.FC<VivaSetupProps> = ({ onConfirm, onBack }) => {
                         <div className="pt-6 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
                             <button
                                 onClick={handleStart}
-                                className="w-full sm:w-auto px-12 py-4 bg-blue-500 text-white font-black rounded-2xl hover:bg-blue-400 transition-all uppercase tracking-[0.2em] text-[11px] shadow-[0_0_40px_rgba(59,130,246,0.3)]"
+                                className="w-full sm:w-auto px-12 py-4 bg-blue-500 text-white font-black rounded-2xl hover:bg-blue-400 transition-all uppercase tracking-[0.2em] text-[11px] shadow-[0_12px_30px_rgba(59,130,246,0.30)]"
                             >
                                 Start Session
                             </button>
@@ -86,7 +88,7 @@ const VivaSetup: React.FC<VivaSetupProps> = ({ onConfirm, onBack }) => {
             </div>
 
             <div className="mt-12 group cursor-default">
-                <p className="text-[8px] font-black text-slate-700 uppercase tracking-[1em] group-hover:text-blue-500/40 transition-colors">Standard Protocol Activated</p>
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.35em] group-hover:text-blue-300/80 transition-colors">Interview session ready</p>
             </div>
         </div>
     );

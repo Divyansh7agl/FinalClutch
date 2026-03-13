@@ -3,8 +3,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SimulationMode, QuestionData, ResponseMetric, PerformanceMetrics, CustomContext } from '../types';
 import { QUESTIONS, FILLER_WORDS, SCORING } from '../constants';
 import PressureMeter from './PressureMeter';
+import Logo from './Logo';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { generateAIQuestions, generateNextAIQuestion } from '../src/utils/aiFeedback';
+import { generateAIQuestions, generateNextAIQuestion, generateFollowupChallenge } from '../src/utils/aiFeedback';
+import CameraFeed from './CameraFeed';
 import { speakWithGroq, stopGroqTTS } from '../src/utils/groqTTS';
 
 interface SimulationProps {
@@ -149,9 +151,12 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       setIsLoadingQuestions(true);
       try {
         let qs: QuestionData[] = [];
+        const resumePrompt = customContext?.resumeContext?.resumeText
+          ? ` Candidate resume context: ${customContext.resumeContext.resumeText}`
+          : '';
         const combinedContext = mode === 'custom' && customContext
-          ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}`
-          : "High-Pressure Executive Leadership Interview";
+          ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}.${resumePrompt}`
+          : `High-Pressure Executive Leadership Interview.${resumePrompt}`;
 
         const difficulty = customContext?.difficulty || 'medium';
 
@@ -159,6 +164,9 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           // Both AI and Custom modes start with one generated question and continue conversationally
           const firstQuestion = await generateNextAIQuestion([], combinedContext, 'groq', difficulty);
           qs = [{ id: `ai-start-${Date.now()}`, text: firstQuestion }];
+        } else if (mode === 'followup') {
+          const firstQuestion = await generateFollowupChallenge('', '', difficulty);
+          qs = [{ id: `followup-start-${Date.now()}`, text: firstQuestion }];
         } else {
           const aiQuestions = await generateAIQuestions(combinedContext, mode === 'panic' ? 10 : 3, 'groq', difficulty);
           if (aiQuestions && aiQuestions.length > 0) {
@@ -170,8 +178,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         }
         setQuestions(qs);
 
-        // Speak the first question if in AI or Custom mode
-        if ((mode === 'ai-interview' || mode === 'custom') && qs.length > 0) {
+        // Speak the first question if in AI, Custom, or Followup mode
+        if ((mode === 'ai-interview' || mode === 'custom' || mode === 'followup') && qs.length > 0) {
           setTimeout(() => speakQuestion(qs[0].text), 1500);
         }
       } catch (err) {
@@ -268,7 +276,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     const lastResponse = processResponse();
     stopListening();
 
-    const isConversational = mode === 'ai-interview' || mode === 'custom';
+    const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
     const limit = isConversational ? 5 : questions.length;
 
     if (isConversational && currentQuestionIdx < limit - 1) {
@@ -277,13 +285,21 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       setAiInterviewHistory(newHistory);
 
       try {
-        const combinedContext = mode === 'custom' && customContext
-          ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}`
-          : "General Professional Interview";
-
         const difficulty = customContext?.difficulty || 'medium';
 
-        const nextQ = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
+        let nextQ: string;
+        if (mode === 'followup') {
+          nextQ = await generateFollowupChallenge(
+            questions[currentQuestionIdx].text,
+            lastResponse.transcript,
+            difficulty
+          );
+        } else {
+          const combinedContext = mode === 'custom' && customContext
+            ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}${customContext.resumeContext?.resumeText ? `. Candidate resume context: ${customContext.resumeContext.resumeText}` : ''}`
+            : `General Professional Interview${customContext?.resumeContext?.resumeText ? `. Candidate resume context: ${customContext.resumeContext.resumeText}` : ''}`;
+          nextQ = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
+        }
         const nextQuestionData: QuestionData = { id: `ai-${Date.now()}`, text: nextQ };
 
         setQuestions(prev => [...prev, nextQuestionData]);
@@ -346,52 +362,81 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // When it's not the user's turn, decay smoothly to 0
       if (!isListening || isAISpeaking || isAIThinking) {
-        setPressureScore(0);
+        setPressureScore(prev => Math.round(prev * 0.88));
         return;
       }
+
+      const now = Date.now();
+      const combinedText = (transcript + ' ' + interimTranscript).toLowerCase().trim();
+      const words = combinedText.split(/\s+/).filter(Boolean);
+      const wordCount = words.length;
       let currentP = 0;
-      const combinedText = (transcript + " " + interimTranscript).toLowerCase();
 
-      const delayMs = speechStartTime
-        ? speechStartTime - questionStartRef.current
-        : Date.now() - questionStartRef.current;
-      const delayOver = Math.max(0, delayMs - SCORING.DELAY_THRESHOLD_MS);
-      const delayPenalty = Math.min(35, delayOver / 140);
-      currentP += delayPenalty;
+      // ── Factor 1: Silence / inactivity (0–50 pts) ──────────────────────────
+      // How long has the mic been open with no detected speech?
+      // Grace period: 1.5 s before we start penalising.
+      // Max pressure reached at 8 s of continuous silence.
+      const silenceMs = now - lastSpeechActivityRef.current;
+      const SILENCE_GRACE = 1500;
+      const SILENCE_MAX_MS = 8000;
+      if (silenceMs > SILENCE_GRACE) {
+        const over = silenceMs - SILENCE_GRACE;
+        currentP += Math.min(50, (over / (SILENCE_MAX_MS - SILENCE_GRACE)) * 50);
+      }
 
-      let fillerMatchCount = 0;
-      FILLER_WORDS.forEach(word => {
-        const regex = new RegExp(`\\b${word}\\b`, 'gi');
-        const matches = combinedText.match(regex);
-        if (matches) fillerMatchCount += matches.length;
-      });
-      currentP += Math.min(30, fillerMatchCount * 4);
+      // ── Factor 2: Filler density (0–30 pts) ────────────────────────────────
+      // Measures fillers as a fraction of total words spoken.
+      // A ratio of 0 = 0 pts; a ratio of 20 %+ = full 30 pts.
+      // This degrades gradually as the user speaks more words cleanly,
+      // instead of staying stuck at a permanent raw count.
+      if (wordCount >= 4) {
+        let fillerCount = 0;
+        FILLER_WORDS.forEach(word => {
+          const reg = new RegExp(`\\b${word}\\b`, 'gi');
+          const m = combinedText.match(reg);
+          if (m) fillerCount += m.length;
+        });
+        const fillerRatio = fillerCount / wordCount; // 0.0 → ~0.3
+        currentP += Math.min(30, fillerRatio * 150);  // 20 % ratio → 30 pts
+      }
 
-      if (isListening) {
-        const inactivityMs = Date.now() - lastSpeechActivityRef.current;
-        if (inactivityMs > 1200) {
-          currentP += Math.min(35, (inactivityMs - 1200) / 90);
+      // ── Factor 3: Initial response wait (0–20 pts) ──────────────────────────
+      // Penalises hesitation BEFORE the user starts speaking.
+      // Once speechStartTime is set (first word detected) this factor is 0 —
+      // early hesitation no longer haunts the rest of the answer.
+      if (!speechStartTime) {
+        const waitMs = now - (micActivationRef.current ?? questionStartRef.current);
+        const WAIT_GRACE = 2000;
+        const WAIT_MAX_MS = 7000;
+        if (waitMs > WAIT_GRACE) {
+          const over = waitMs - WAIT_GRACE;
+          currentP += Math.min(20, (over / (WAIT_MAX_MS - WAIT_GRACE)) * 20);
         }
       }
 
+      // ── Mode modifiers ───────────────────────────────────────────────────────
       if (mode === 'panic') {
-        if (timeLeft < 10) currentP += 30;
-        currentP *= 1.2;
-      }
-
-      if (mode === 'ai-interview') {
-        currentP *= 0.8; // AI mode is more conversational, less about raw pressure
+        currentP *= 1.25;
+        if (timeLeft < 10) currentP += 20; // urgency spike in final 10 s
+      } else if (mode === 'followup') {
+        currentP *= 1.1;  // slightly elevated — adversarial context
+      } else if (mode === 'ai-interview' || mode === 'custom') {
+        currentP *= 0.85; // conversational — less raw pressure
       }
 
       const target = Math.max(0, Math.min(100, currentP));
+
+      // ── Asymmetric smoothing ─────────────────────────────────────────────────
+      // Rises quickly (feels responsive to stress),
+      // falls slowly (recovery feels earned, not instant).
       setPressureScore(prev => {
-        const recovering = fillerMatchCount === 0 && delayOver === 0;
-        const base = recovering ? prev * 0.85 : prev * 0.7;
-        const next = base + target * (recovering ? 0.15 : 0.3);
-        return Math.round(Math.max(0, Math.min(100, next)));
+        const alpha = target > prev ? 0.40 : 0.12;
+        return Math.round(Math.max(0, Math.min(100, prev + alpha * (target - prev))));
       });
     }, 100);
+
     return () => clearInterval(interval);
   }, [transcript, interimTranscript, timeLeft, mode, speechStartTime, isListening, isAISpeaking, isAIThinking]);
 
@@ -405,10 +450,10 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           </div>
         </div>
         <h2 className="mt-8 text-2xl font-black text-blue-500 uppercase tracking-widest animate-pulse">
-          {mode === 'ai-interview' ? 'Initializing Neural Link' : 'Generating AI Challenges'}
+          {mode === 'ai-interview' ? 'Initializing Neural Link' : mode === 'followup' ? 'Calibrating Adversary' : 'Generating AI Challenges'}
         </h2>
         <p className="mt-4 text-slate-500 font-mono text-xs uppercase tracking-widest">
-          {mode === 'ai-interview' ? 'Syncing with conversational AI...' : 'Constructing psychological pressure scenarios...'}
+          {mode === 'ai-interview' ? 'Syncing with conversational AI...' : mode === 'followup' ? 'Preparing hostile interrogation mode...' : 'Constructing psychological pressure scenarios...'}
         </p>
       </div>
     );
@@ -424,11 +469,12 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     );
   }
 
-  const isConversational = mode === 'ai-interview' || mode === 'custom';
+  const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
   const isAIActive = mode === 'ai-interview';
   const isCustomActive = mode === 'custom';
+  const isFollowupActive = mode === 'followup';
   const isPanicShaking = mode === 'panic' && timeLeft < 10;
-  const themeColor = isAIActive ? 'emerald' : isCustomActive ? 'orange' : 'blue';
+  const themeColor = isAIActive ? 'emerald' : isCustomActive ? 'orange' : isFollowupActive ? 'red' : 'blue';
 
   return (
     <div className={`flex flex-col h-full bg-[#0a0c10] relative transition-all duration-500 ${isPanicShaking ? 'bg-red-950/20' : ''}`}>
@@ -442,11 +488,17 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         {isCustomActive && (
           <div className="absolute inset-0 bg-orange-500/5 transition-opacity duration-1000" />
         )}
+        {isFollowupActive && (
+          <div className="absolute inset-0 bg-red-500/5 transition-opacity duration-1000" />
+        )}
       </div>
 
       <div className="flex items-center justify-between p-8 relative z-10">
         <button onClick={onQuit} className="text-slate-600 hover:text-white transition-colors font-black uppercase tracking-[0.3em] text-[10px]">Terminate Sim</button>
         <div className={`text-center space-y-1 ${isPanicShaking ? 'animate-shake' : ''}`}>
+          <div className="flex justify-center mb-2">
+            <Logo size="sm" />
+          </div>
           <div className={`text-5xl font-black tabular-nums tracking-tighter ${timeLeft < 10 && mode === 'panic' ? 'text-red-500' : 'text-white'}`}>
             {mode === 'panic' ? timeLeft : `${currentQuestionIdx + 1}/${isConversational ? 5 : 3}`}
           </div>
@@ -454,8 +506,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
             {mode === 'panic' ? 'Time Remaining' : 'Protocol Progression'}
           </div>
         </div>
-        <div className={`px-3 py-1 border rounded-md text-[10px] font-black tracking-widest uppercase ${isAIActive ? 'border-emerald-500/20 text-emerald-500' : isCustomActive ? 'border-orange-500/20 text-orange-500' : 'border-blue-500/20 text-blue-500'}`}>
-          {isAIActive ? 'Neural.Feedback.Active' : isCustomActive ? 'Custom.Protocol.Active' : 'Live.Link'}
+          <div className={`px-3 py-1 border rounded-md text-[10px] font-black tracking-widest uppercase ${isAIActive ? 'border-emerald-500/20 text-emerald-500' : isCustomActive ? 'border-orange-500/20 text-orange-500' : isFollowupActive ? 'border-red-500/20 text-red-500' : 'border-blue-500/20 text-blue-500'}`}>
+            {isAIActive ? 'Neural.Feedback.Active' : isCustomActive ? 'Custom.Protocol.Active' : isFollowupActive ? 'Trap.Mode.Active' : 'Live.Link'}
         </div>
       </div>
 
@@ -464,9 +516,9 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         <div className="lg:col-span-8 flex flex-col justify-start pt-8 space-y-8">
           <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-1000" key={currentQuestionIdx}>
             <div className="inline-flex items-center space-x-2">
-              <span className={`w-1.5 h-1.5 rounded-full ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : 'bg-blue-500'}`} />
-              <span className={`${isAIActive ? 'text-emerald-500' : isCustomActive ? 'text-orange-500' : 'text-blue-500'} font-black uppercase tracking-[0.4em] text-[11px]`}>
-                {isAIActive ? 'AI Conversational Agent' : isCustomActive ? `Neural Expert: ${customContext?.role}` : 'Neural Challenge Alpha'}
+              <span className={`w-1.5 h-1.5 rounded-full ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : isFollowupActive ? 'bg-red-500' : 'bg-blue-500'}`} />
+              <span className={`${isAIActive ? 'text-emerald-500' : isCustomActive ? 'text-orange-500' : isFollowupActive ? 'text-red-500' : 'text-blue-500'} font-black uppercase tracking-[0.4em] text-[11px]`}>
+                {isAIActive ? 'AI Conversational Agent' : isCustomActive ? `Neural Expert: ${customContext?.role}` : isFollowupActive ? 'Adversarial Interrogator' : 'Neural Challenge Alpha'}
               </span>
             </div>
             <h2 className={`text-3xl md:text-4xl lg:text-5xl font-black leading-[1.2] text-white tracking-tight max-w-4xl break-words ${isAISpeaking ? 'animate-pulse' : ''}`}>
@@ -528,6 +580,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       {/* Control Bar */}
       <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center space-y-8 z-20">
         <div className="flex items-center space-x-8">
+          {/* Camera self-view */}
+          <CameraFeed accentColor={isFollowupActive ? 'red' : isAIActive ? 'emerald' : isCustomActive ? 'orange' : 'blue'} />
           <button
             onClick={toggleMic}
             disabled={isAISpeaking || isAIThinking}

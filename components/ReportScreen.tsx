@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PerformanceMetrics } from '../types';
 import { generateAIFeedback, generateAIChat, setUseFreeMode, setUseOllamaMode } from '../src/utils/aiFeedback';
+import Logo from './Logo';
 
 interface ReportScreenProps {
   metrics: PerformanceMetrics;
@@ -176,7 +177,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
 
         {/* Header */}
         <div className="flex flex-col items-center text-center space-y-6">
-          <div className="text-xl font-black tracking-tighter text-white opacity-40 italic">CLUTCH<span className="text-blue-500">AI</span></div>
+          <Logo size="md" />
           <div className="relative">
             <div className="absolute -inset-10 bg-blue-600/10 blur-3xl rounded-full" />
             <h2 className="text-[7rem] md:text-[8rem] font-black text-white tracking-tighter leading-none relative">
@@ -201,7 +202,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
           <div className="flex items-center space-x-2 mb-4">
             <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/60">Data Source:</span>
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              {aiMetrics ? 'GROQ SPEED ENGINE ANALYSIS' : 'Initializing Neural Link...'}
+              {aiMetrics ? 'AI PERFORMANCE ANALYSIS' : 'Preparing analysis...'}
             </span>
           </div>
           <div className="space-y-4">
@@ -222,9 +223,9 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
           <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Tactical Discussion Link</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Coaching Chat</span>
             </div>
-            <span className="text-[9px] font-mono text-slate-600 uppercase">Context: Session-Alpha-7</span>
+            <span className="text-[9px] font-mono text-slate-600 uppercase">Context: Current Session</span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-hide">
@@ -234,7 +235,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
                 <p className="text-[10px] font-black uppercase tracking-[.2em] max-w-[200px]">
-                  Discussion portal ready. Analyze specific gaps or request drill-down metrics.
+                  Ask for focused feedback, improvement tips, or role-specific practice advice.
                 </p>
               </div>
             )}
@@ -271,7 +272,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
                 type="text"
                 value={userInput}
                 onChange={e => setUserInput(e.target.value)}
-                placeholder="PROMPT AI INTERVIEW COACH..."
+                placeholder="Ask a question about your performance..."
                 className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-6 py-4 text-[11px] font-black uppercase tracking-widest text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all"
               />
               <button
@@ -289,8 +290,8 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
 
         {/* Footer */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8">
-          <button onClick={onRetry} className="w-full md:w-auto px-10 py-4 bg-white text-black font-black rounded-xl hover:bg-blue-600 hover:text-white transition-all uppercase tracking-[0.2em] text-[10px]">Restart Protocol</button>
-          <button onClick={onHome} className="w-full md:w-auto px-10 py-4 text-slate-500 hover:text-white transition-colors font-black uppercase tracking-[0.2em] text-[10px]">Exit Terminal</button>
+          <button onClick={onRetry} className="w-full md:w-auto px-10 py-4 bg-white text-black font-black rounded-xl hover:bg-blue-600 hover:text-white transition-all uppercase tracking-[0.2em] text-[10px]">Retry Session</button>
+          <button onClick={onHome} className="w-full md:w-auto px-10 py-4 text-slate-500 hover:text-white transition-colors font-black uppercase tracking-[0.2em] text-[10px]">Back to Home</button>
         </div>
       </div>
     </div>

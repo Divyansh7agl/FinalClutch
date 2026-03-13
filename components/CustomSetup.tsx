@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { CustomContext, DifficultyLevel } from '../types';
+import Logo from './Logo';
 
 interface CustomSetupProps {
     onConfirm: (context: CustomContext) => void;
@@ -22,15 +23,16 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
     return (
         <div className="flex flex-col items-center justify-center min-h-full py-16 px-6 bg-[#0a0c10]">
             <div className="mb-8 text-center">
-                <h1 className="text-xl font-black tracking-tighter text-white opacity-50 italic uppercase">Neural.Configuration</h1>
+                <Logo size="md" />
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Custom Setup</p>
             </div>
 
-            <div className="max-w-2xl w-full glass-card p-12 rounded-[2.5rem] border border-orange-500/20 shadow-[0_0_80px_rgba(249,115,22,0.05)] relative overflow-hidden">
+            <div className="max-w-2xl w-full glass-card p-12 rounded-[2.5rem] border border-orange-500/20 shadow-[0_20px_50px_rgba(249,115,22,0.10)] relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 text-8xl opacity-5 font-serif italic text-orange-500">C</div>
 
                 <div className="relative z-10">
                     <h2 className="text-3xl font-bold mb-2 text-white">Custom Protocol</h2>
-                    <p className="text-slate-500 mb-10 text-sm font-medium tracking-wide">Define your training parameters to personalize the AI engagement.</p>
+                    <p className="text-slate-500 mb-10 text-sm font-medium tracking-wide">Define role, focus topic, and difficulty for a tailored interview practice session.</p>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
                         <div className="space-y-3">
@@ -38,7 +40,7 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
                             <input
                                 autoFocus
                                 type="text"
-                                placeholder="e.g., Senior Software Architect"
+                                placeholder="e.g., Senior Product Manager"
                                 value={role}
                                 onChange={(e) => setRole(e.target.value)}
                                 className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500/50 transition-all font-medium"
@@ -50,7 +52,7 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
                             <label className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500 ml-1">Primary Objective (Topic)</label>
                             <input
                                 type="text"
-                                placeholder="e.g., Distributed Systems & Scalability"
+                                placeholder="e.g., Product Strategy and Execution"
                                 value={topic}
                                 onChange={(e) => setTopic(e.target.value)}
                                 className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-white placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-orange-500/50 transition-all font-medium"
@@ -99,14 +101,14 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
                                 type="submit"
                                 className="w-full sm:w-auto px-12 py-4 bg-orange-500 text-black font-black rounded-2xl hover:bg-orange-400 transition-all uppercase tracking-[0.2em] text-[11px] shadow-[0_0_40px_rgba(249,115,22,0.3)]"
                             >
-                                Engage Simulation
+                                Start Session
                             </button>
                             <button
                                 type="button"
                                 onClick={onBack}
                                 className="text-slate-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-[0.3em] px-4"
                             >
-                                Abort Setup
+                                Back to Modes
                             </button>
                         </div>
                     </form>
@@ -114,7 +116,7 @@ const CustomSetup: React.FC<CustomSetupProps> = ({ onConfirm, onBack }) => {
             </div>
 
             <div className="mt-12 group cursor-default">
-                <p className="text-[8px] font-black text-slate-700 uppercase tracking-[1em] group-hover:text-orange-500/40 transition-colors">Neural Sync Optimized for Precision</p>
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.35em] group-hover:text-orange-300/80 transition-colors">Custom session ready</p>
             </div>
         </div>
     );
