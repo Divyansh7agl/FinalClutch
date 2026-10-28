@@ -15,7 +15,48 @@ const GROQ_API_KEY =
     ? import.meta.env.VITE_GROQ_API_KEY
     : "";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env.VITE_GROQ_MODEL) ||
+  "openai/gpt-oss-120b";
+
+async function fetchGroqChatCompletion(payload) {
+  const models = [
+    GROQ_MODEL,
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "llama-3.3-70b-versatile"
+  ];
+  const uniqueModels = Array.from(new Set(models.filter(Boolean)));
+
+  for (const model of uniqueModels) {
+    try {
+      const response = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${GROQ_API_KEY}`
+        },
+        body: JSON.stringify({ ...payload, model })
+      });
+      if (response.ok) {
+        return response;
+      }
+      const err = await response.clone().json().catch(() => null);
+      if (response.status === 404 || err?.error?.code === 'model_not_found') {
+        console.warn(`Groq model ${model} unavailable, trying fallback...`);
+        continue;
+      }
+      return response;
+    } catch (e) {
+      console.warn(`Groq network error with model ${model}:`, e);
+    }
+  }
+  return null;
+}
+
+const CANDIDATE_LEVEL = "college student or fresher applying for internships and entry-level roles";
 
 let useFreeMode = true;
 let useOllamaMode = false;
@@ -143,24 +184,16 @@ Analyze the candidate's responses for relevance and delivery now.`;
   // Attempt Primary AI if selected
   if (mode === 'groq' && GROQ_API_KEY) {
     try {
-      const response = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.1,
-          stream: false
-        }),
+      const response = await fetchGroqChatCompletion({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.1,
+        stream: false
       });
 
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content || "";
         if (onToken) onToken(text.split(/SCORES:/i)[0]);
@@ -272,24 +305,16 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
   // Unified Chat Logic
   if (mode === 'groq' && GROQ_API_KEY) {
     try {
-      const response = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: systemContext },
-            ...messages.map(m => ({ role: m.role, content: m.content }))
-          ],
-          temperature: 0.5,
-          stream: false
-        }),
+      const response = await fetchGroqChatCompletion({
+        messages: [
+          { role: "system", content: systemContext },
+          ...messages.map(m => ({ role: m.role, content: m.content }))
+        ],
+        temperature: 0.5,
+        stream: false
       });
 
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content || "";
         if (onToken) onToken(text);
@@ -351,7 +376,7 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
   return fallbackMsg;
 }
 
-export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq', difficulty = 'medium') {
+export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq', difficulty = 'medium', examples = "") {
   const hasResumeContext = /candidate resume context:/i.test(context);
   const difficultyInstructions = {
     easy: "Generate beginner-friendly, straightforward questions focusing on fundamental concepts and basic scenarios. Keep questions simple and accessible.",
@@ -361,39 +386,40 @@ export async function generateAIQuestions(context = "General High-Pressure Inter
 
   const difficultyInstruction = difficultyInstructions[difficulty] || difficultyInstructions.medium;
 
-  const systemPrompt = `You are an elite interview architect. Generate ${count} interview questions.
-  The context is: ${context}.
-  
-  DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
-  ${difficultyInstruction}
+  const systemPrompt = `You are an experienced interviewer preparing questions for a live interview.
+Candidate level: ${CANDIDATE_LEVEL}.
+Context: ${context}.
+Generate ${count} questions.
 
-  ${hasResumeContext
-      ? 'RESUME PRIORITY: The context includes the candidate resume. Base questions on the candidate\'s real skills, projects, tools, education, and achievements. Ask specific, experience-grounded questions.'
-      : 'Ask broadly relevant interview questions for the given context.'}
-  
-  FORMAT: Return ONLY a JSON array of strings. No introductory text, no markdown code blocks.
-  Example: ["Question 1", "Question 2"]`;
+DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+${difficultyInstruction}
+
+Rules:
+- Each question is 1-2 plain sentences, exactly as a person would say it out loud.
+- Every question differs in topic and type: cover a mix of project decision, fundamentals check, "what would happen if" scenario, and trade-off.
+- No definition-only questions unless difficulty is EASY.
+- No theatrical phrasing, no jargon like "delve" or "navigate".
+- Order questions from easier to harder.
+${hasResumeContext
+  ? '- RESUME PRIORITY: Most questions must be grounded in specific projects, tools, and decisions from the resume — ask why they chose something, what broke, or what they would change. Do not just ask them to describe a project.'
+  : '- Ask broadly relevant questions for the given context.'}
+${examples ? `\nReal questions for style reference only, do not copy them: ${examples}` : ''}
+
+Return ONLY a JSON array of strings. No introductory text, no markdown code blocks.
+Example: ["Question 1", "Question 2"]`;
 
   if (mode === 'groq' && GROQ_API_KEY) {
     try {
-      const response = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "Generate the questions now." }
-          ],
-          temperature: 0.7,
-          stream: false
-        }),
+      const response = await fetchGroqChatCompletion({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate the questions now." }
+        ],
+        temperature: 0.7,
+        stream: false
       });
 
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content || "";
         // Clean up potential markdown formatting if the model ignored instructions
@@ -414,7 +440,7 @@ export async function generateAIQuestions(context = "General High-Pressure Inter
   return null;
 }
 
-export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq', difficulty = 'medium') {
+export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq', difficulty = 'medium', examples = "") {
   const historyText = history.map((h, i) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}`).join('\n\n');
   const hasResumeContext = /candidate resume context:/i.test(context);
 
@@ -426,48 +452,46 @@ export async function generateNextAIQuestion(history = [], context = "General Hi
 
   const difficultyInstruction = difficultyInstructions[difficulty] || difficultyInstructions.medium;
 
-  const systemPrompt = `You are a rigorous, elite AI Interviewer at a top-tier firm like Wellfound or OpenAI. 
-  Your goal is to conduct a live, conversational interview. 
-  
-  DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
-  ${difficultyInstruction}
+  const systemPrompt = `You are a senior engineer interviewing a candidate live.
+Candidate level: ${CANDIDATE_LEVEL}.
+Context: ${context}.
 
-  ${hasResumeContext
-      ? 'RESUME PRIORITY: The interview context includes a candidate resume. Keep follow-up questions tightly aligned to resume claims (projects, tech stack, impact metrics, leadership examples).'
-      : 'Keep follow-up questions aligned to the provided interview context.'}
-  
-  CURRENT CONVERSATION HISTORY:
-  ${historyText}
-  
-  TASK:
-  - If the candidate's last answer was brief or lacked detail, ask a pointed follow-up question to dig deeper into that specific point.
-  - If they answered well, move to a related but more challenging technical or behavioral topic within the context of "${context}".
-  - Keep the question concise, sharp, and provocative.
-  - DO NOT repeat questions.
-  - DO NOT provide feedback yet, just ask the NEXT question.
+DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+${difficultyInstruction}
 
-  FORMAT: Return ONLY a single string containing the question. No introductory text.`;
+${hasResumeContext
+  ? 'RESUME PRIORITY: Keep follow-up questions tightly aligned to resume claims — projects, tech stack, impact metrics, specific decisions.'
+  : 'Keep follow-up questions aligned to the provided interview context.'}
+
+Conversation so far:
+${historyText}
+
+Decide the next move based on the candidate's LAST answer:
+- Vague or short -> ask one specific follow-up about the exact thing they skipped.
+- Wrong or shaky -> probe the gap once, calmly, without correcting them outright.
+- Strong -> go one level deeper or move to a related topic.
+- After 2 follow-ups on one topic -> move to a new topic from the resume or context.
+
+Rules:
+- ONE question, maximum 2 sentences, spoken style.
+- No praise, no feedback, no summary of their answer.
+- Never repeat or rephrase an earlier question.
+${examples ? `\nReal questions for style reference only, do not copy them: ${examples}` : ''}
+
+Return ONLY the question text, no quotes or preamble.`;
 
   if (mode === 'groq' && GROQ_API_KEY) {
     try {
-      const response = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "Generate the next conversational follow-up question now." }
-          ],
-          temperature: 0.8,
-          stream: false
-        }),
+      const response = await fetchGroqChatCompletion({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate the next conversational follow-up question now." }
+        ],
+        temperature: 0.8,
+        stream: false
       });
 
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content || "";
         return text.trim();
@@ -476,10 +500,17 @@ export async function generateNextAIQuestion(history = [], context = "General Hi
       console.warn("AI API error generating next question:", error);
     }
   }
-  return "Could you tell me more about your experience handling conflict in a high-stakes environment?";
+  const fallbackQuestions = [
+    "Could you walk me through a technical project you built recently and what role you played in it?",
+    "What was the most challenging bug you encountered in your projects, and how did you diagnose it?",
+    "How do you decide what tools or frameworks to use when starting a new application?",
+    "Could you tell me more about your experience handling conflict or tight deadlines in a team?",
+    "If you had another month to work on your latest project, what would you improve or refactor?"
+  ];
+  return fallbackQuestions[Math.min(history.length, fallbackQuestions.length - 1)];
 }
 
-export async function generateFollowupChallenge(previousQuestion = '', previousAnswer = '', difficulty = 'medium') {
+export async function generateFollowupChallenge(previousQuestion = '', previousAnswer = '', difficulty = 'medium', examples = "") {
   const difficultyInstructions = {
     easy: "Ask a probing follow-up that gently challenges one part of the answer. Stay direct but not harsh.",
     medium: "Ask a sharp follow-up that exposes a gap, contradiction, or vague claim in the answer. Be direct and specific.",
@@ -489,45 +520,41 @@ export async function generateFollowupChallenge(previousQuestion = '', previousA
 
   const hasHistory = previousQuestion && previousAnswer;
 
-  const systemPrompt = `You are a hostile, adversarial interviewer. Your job is NOT to be supportive — your job is to pressure-test every answer like a skeptical VC, a tough hiring manager, or a court examiner.
+  const systemPrompt = `You are a tough technical interviewer who does not accept vague answers. You are not rude, but you push hard on weak spots.
+Candidate level: ${CANDIDATE_LEVEL}.
 
 DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
 ${difficultyInstruction}
 
 ${hasHistory
-  ? `PREVIOUS QUESTION: "${previousQuestion}"
-CANDIDATE'S ANSWER: "${previousAnswer}"
+  ? `Previous question: ${previousQuestion}
+Candidate's answer: ${previousAnswer}
 
-Your task: Generate ONE sharp, challenging follow-up question that:
-- Directly challenges a specific claim, assumption, or vague statement in their answer
-- Demands concrete evidence, metrics, or examples they failed to provide
-- Exposes a logical gap or contradiction
-- Is terse, direct, and uncomfortable — this is a pressure test
-- Does NOT repeat the previous question`
-  : `Generate ONE sharp opening interview question that immediately puts the candidate on the spot. Make it specific, provocative, and hard to dodge. No warm-up.`}
+Ask ONE follow-up that attacks the weakest point in their answer. Pick the best fit from:
+- A claim they made with no evidence or numbers.
+- A trade-off they ignored.
+- An edge case or failure mode they did not mention.
+- A hidden assumption about scale, data, or environment.
 
-FORMAT: Return ONLY a single string — the question itself. No intro text, no explanation.`;
+Rules: 1-2 short sentences, direct and a little cold, no insults, do not repeat the previous question.
+Return ONLY the question text, no quotes or preamble.`
+  : `Ask one direct, specific question on the context with no warm-up, the way a real interviewer opens when short on time.
+Rules: 1-2 sentences, plain spoken language, no theatrical phrasing.
+Return ONLY the question text, no quotes or preamble.`}
+${examples ? `\nReal questions for style reference only, do not copy them: ${examples}` : ''}`;
 
   if (GROQ_API_KEY) {
     try {
-      const response = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "Generate the follow-up challenge question now." }
-          ],
-          temperature: 0.85,
-          stream: false
-        }),
+      const response = await fetchGroqChatCompletion({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: "Generate the follow-up challenge question now." }
+        ],
+        temperature: 0.85,
+        stream: false
       });
 
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content || "";
         return text.trim();

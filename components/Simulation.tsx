@@ -109,8 +109,16 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       }, 300);
     };
 
+    // If TTS errors out (audio playback failure), still start the mic
+    // so the user can respond — don't leave the session stuck.
     const onError = () => {
       setIsAISpeaking(false);
+      setTimeout(() => {
+        if (micActivationRef.current === null) {
+          micActivationRef.current = Date.now();
+        }
+        startListening();
+      }, 300);
     };
 
     // Try Groq TTS first (high quality Orpheus/PlayAI voice)
@@ -154,9 +162,21 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         const resumePrompt = customContext?.resumeContext?.resumeText
           ? ` Candidate resume context: ${customContext.resumeContext.resumeText}`
           : '';
-        const combinedContext = mode === 'custom' && customContext
-          ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}.${resumePrompt}`
-          : `High-Pressure Executive Leadership Interview.${resumePrompt}`;
+
+        // Build a context string that reflects the actual mode so Groq doesn't
+        // generate the same executive-leadership questions every single time.
+        let combinedContext: string;
+        if (mode === 'custom' && customContext) {
+          combinedContext = `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}.${resumePrompt}`;
+        } else if (mode === 'ai-interview') {
+          combinedContext = `General software / tech internship or entry-level interview.${resumePrompt}`;
+        } else if (mode === 'viva') {
+          combinedContext = `Technical viva-style interview for an engineering or CS internship candidate.${resumePrompt}`;
+        } else if (mode === 'panic') {
+          combinedContext = `Rapid-fire technical and behavioural questions for a fresher applying to tech internships.${resumePrompt}`;
+        } else {
+          combinedContext = `Entry-level job or internship interview.${resumePrompt}`;
+        }
 
         const difficulty = customContext?.difficulty || 'medium';
 
@@ -281,7 +301,11 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
 
     if (isConversational && currentQuestionIdx < limit - 1) {
       setIsAIThinking(true);
-      const newHistory = [...aiInterviewHistory, { question: questions[currentQuestionIdx].text, answer: lastResponse.transcript }];
+      // Build history immediately using captured values (before any awaits)
+      const newHistory = [
+        ...aiInterviewHistory,
+        { question: questions[currentQuestionIdx].text, answer: lastResponse.transcript }
+      ];
       setAiInterviewHistory(newHistory);
 
       try {
@@ -295,20 +319,27 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
             difficulty
           );
         } else {
+          // Build context for ai-interview mode using resume context if available
+          const resumeSuffix = customContext?.resumeContext?.resumeText
+            ? `. Candidate resume context: ${customContext.resumeContext.resumeText}`
+            : '';
           const combinedContext = mode === 'custom' && customContext
-            ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}${customContext.resumeContext?.resumeText ? `. Candidate resume context: ${customContext.resumeContext.resumeText}` : ''}`
-            : `General Professional Interview${customContext?.resumeContext?.resumeText ? `. Candidate resume context: ${customContext.resumeContext.resumeText}` : ''}`;
+            ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}${resumeSuffix}`
+            : `General Professional Interview${resumeSuffix}`;
           nextQ = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
         }
         const nextQuestionData: QuestionData = { id: `ai-${Date.now()}`, text: nextQ };
 
-        setQuestions(prev => [...prev, nextQuestionData]);
-        setCurrentQuestionIdx(prev => prev + 1);
+        // Reset transcript and refs BEFORE speaking so the new listening
+        // session starts clean when TTS finishes
         resetTranscript();
         questionStartRef.current = Date.now();
         micActivationRef.current = null;
 
-        // Speak the next question
+        setQuestions(prev => [...prev, nextQuestionData]);
+        setCurrentQuestionIdx(prev => prev + 1);
+
+        // Speak the next question — onEnd will auto-start the mic
         speakQuestion(nextQ);
       } catch (e) {
         console.error("Dynamic question error", e);
@@ -317,6 +348,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         setIsAIThinking(false);
       }
     } else if (currentQuestionIdx < questions.length - 1) {
+      // Non-conversational (viva/panic) — advance to next pre-loaded question
       setCurrentQuestionIdx(prev => prev + 1);
       resetTranscript();
       questionStartRef.current = Date.now();
