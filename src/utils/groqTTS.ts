@@ -1,24 +1,12 @@
-// Groq TTS using PlayAI (Orpheus English) model
-// Docs: https://console.groq.com/docs/text-speech
+// Groq TTS using serverless proxy /api/tts
+// Client contains ZERO API keys
 
-const GROQ_API_KEY: string =
-    (typeof import.meta !== 'undefined' &&
-        (import.meta as any).env &&
-        (import.meta as any).env.VITE_GROQ_API_KEY)
-        ? (import.meta as any).env.VITE_GROQ_API_KEY
-        : '';
-
-const GROQ_TTS_URL = 'https://api.groq.com/openai/v1/audio/speech';
-
-// Best voice for an authoritative AI interviewer: bold, clear, neutral American English
 const DEFAULT_VOICE = 'Thunder-PlayAI';
-const TTS_MODEL = 'playai-tts';
-
 let currentAudio: HTMLAudioElement | null = null;
 
 /**
- * Speaks text using Groq's Orpheus/PlayAI TTS.
- * Returns true if successful, false if unavailable (so caller can fallback).
+ * Speaks text using serverless Groq TTS proxy (/api/tts).
+ * Returns true if successful, false if unavailable (so caller falls back to window.speechSynthesis).
  */
 export async function speakWithGroq(
     text: string,
@@ -27,31 +15,24 @@ export async function speakWithGroq(
     onError: (e: unknown) => void,
     voice: string = DEFAULT_VOICE
 ): Promise<boolean> {
-    if (!GROQ_API_KEY || !text.trim()) return false;
+    const cleanText = (text || '').trim();
+    if (!cleanText) return false;
 
     // Stop any currently playing audio
     stopGroqTTS();
 
     try {
-        console.log('[TTS] Requesting Groq TTS with voice:', voice);
-
-        const response = await fetch(GROQ_TTS_URL, {
+        const response = await fetch('/api/tts', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${GROQ_API_KEY}`,
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: TTS_MODEL,
-                input: text,
+                text: cleanText,
                 voice,
-                response_format: 'mp3',
             }),
         });
 
         if (!response.ok) {
-            const err = await response.text();
-            console.error('[TTS] Groq TTS error:', response.status, err);
+            console.warn('[TTS] /api/tts responded with status:', response.status);
             return false;
         }
 
@@ -61,12 +42,10 @@ export async function speakWithGroq(
         currentAudio = audio;
 
         audio.onplay = () => {
-            console.log('[TTS] Groq TTS playing');
             onStart();
         };
 
         audio.onended = () => {
-            console.log('[TTS] Groq TTS finished');
             URL.revokeObjectURL(audioUrl);
             currentAudio = null;
             onEnd();
@@ -82,7 +61,7 @@ export async function speakWithGroq(
         await audio.play();
         return true;
     } catch (e) {
-        console.error('[TTS] Groq TTS failed:', e);
+        console.warn('[TTS] Groq TTS unavailable, falling back:', e);
         return false;
     }
 }

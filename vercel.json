@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "framework": "vite",
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "src/data/questionBankEmbedded.json",
+      "maxDuration": 10
+    }
+  }
+}

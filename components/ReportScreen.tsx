@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PerformanceMetrics } from '../types';
-import { generateAIFeedback, generateAIChat, setUseFreeMode, setUseOllamaMode } from '../src/utils/aiFeedback';
+import { generateAIFeedback, generateAIChat, setUseFreeMode, setUseOllamaMode, getLastFeedbackMeta } from '../src/utils/aiFeedback';
 import Logo from './Logo';
 
 interface ReportScreenProps {
@@ -11,24 +11,40 @@ interface ReportScreenProps {
   onHome: () => void;
 }
 
-const MetricCard: React.FC<{ title: string; score: number; desc: string; color: string }> = ({ title, score, desc, color }) => (
-  <div className="bg-white/[0.02] border border-white/5 p-8 rounded-3xl backdrop-blur-xl group hover:border-white/10 transition-colors">
-    <div className="flex items-center justify-between mb-4">
-      <h4 className="font-black text-slate-500 uppercase tracking-[0.3em] text-[10px]">{title}</h4>
-      <span className={`text-3xl font-black tracking-tighter ${color}`}>{score}%</span>
+function getScoreBand(score: number): { label: string; badgeClass: string } {
+  if (score >= 85) return { label: 'Strong', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+  if (score >= 70) return { label: 'Good', badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+  return { label: 'Needs Work', badgeClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+}
+
+const MetricCard: React.FC<{ title: string; score: number; desc: string; color: string }> = ({ title, score, desc, color }) => {
+  const band = getScoreBand(score);
+  return (
+    <div className="bg-white/[0.02] border border-white/5 p-8 rounded-3xl backdrop-blur-xl group hover:border-white/10 transition-colors">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-black text-slate-500 uppercase tracking-[0.3em] text-[10px]">{title}</h4>
+        <div className="flex items-center space-x-2">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${band.badgeClass}`}>
+            {band.label}
+          </span>
+          <span className={`text-3xl font-black tracking-tighter ${color}`}>{score}%</span>
+        </div>
+      </div>
+      <div className="w-full bg-white/5 h-1.5 rounded-full mb-6 overflow-hidden">
+        <div
+          className={`h-full ${color.replace('text-', 'bg-')} transition-all duration-1000 ease-out`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <p className="text-[11px] text-slate-500 leading-relaxed font-bold uppercase tracking-tight opacity-70 group-hover:opacity-100 transition-opacity">{desc}</p>
     </div>
-    <div className="w-full bg-white/5 h-1.5 rounded-full mb-6 overflow-hidden">
-      <div
-        className={`h-full ${color.replace('text-', 'bg-')} transition-all duration-1000 ease-out`}
-        style={{ width: `${score}%` }}
-      />
-    </div>
-    <p className="text-[11px] text-slate-500 leading-relaxed font-bold uppercase tracking-tight opacity-70 group-hover:opacity-100 transition-opacity">{desc}</p>
-  </div>
-);
+  );
+};
 
 const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, onRetry, onBack, onHome }) => {
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
+  const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [aiMode, setAiMode] = useState<'free' | 'ollama' | 'gemini' | 'groq'>('groq');
   const requestIdRef = useRef(0);
   const [aiMetrics, setAiMetrics] = useState<PerformanceMetrics | null>(null);
@@ -122,6 +138,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
     (async () => {
       setAiFeedback(null); // Clear previous feedback immediately
       setAiMetrics(null);   // Reset scores to raw simulation metrics
+      setFallbackNotice(null);
       setIsGenerating(true);
       setUseOllamaMode(aiMode === 'ollama');
       setUseFreeMode(aiMode === 'free');
@@ -145,6 +162,13 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
         );
 
         if (requestIdRef.current === requestId) {
+          const meta = getLastFeedbackMeta();
+          if (meta?.notice) {
+            setFallbackNotice(meta.notice);
+          }
+          if (meta?.modelUsed) {
+            setModelUsed(meta.modelUsed);
+          }
           const scoreMatch = text.match(/SCORES:\s*({.+})/i);
           if (scoreMatch) {
             try {
@@ -170,6 +194,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
 
   const displayMetrics = aiMetrics || metrics;
   const improvement = previousMetrics ? displayMetrics.confidence - previousMetrics.confidence : 0;
+  const overallBand = getScoreBand(displayMetrics.confidence);
 
   return (
     <div className="relative flex flex-col items-center min-h-screen bg-[#0a0c10] overflow-y-auto px-6 py-20 selection:bg-blue-500/30">
@@ -183,7 +208,12 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
             <h2 className="text-[7rem] md:text-[8rem] font-black text-white tracking-tighter leading-none relative">
               {displayMetrics.confidence}<span className="text-blue-600">%</span>
             </h2>
-            <p className="text-sm font-black uppercase tracking-[0.5em] text-slate-600">Composure Index</p>
+            <div className="flex items-center justify-center space-x-3 mt-3">
+              <p className="text-sm font-black uppercase tracking-[0.5em] text-slate-600">Composure Index</p>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${overallBand.badgeClass}`}>
+                {overallBand.label}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -199,11 +229,22 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-blue-500 font-black uppercase tracking-[0.4em] text-[10px]">Executive Assessment</h3>
           </div>
-          <div className="flex items-center space-x-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <span className="text-[10px] font-black uppercase tracking-widest text-blue-500/60">Data Source:</span>
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               {aiMetrics ? 'AI PERFORMANCE ANALYSIS' : 'Preparing analysis...'}
             </span>
+            {modelUsed && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Model: {modelUsed.replace('openai/', '').replace('qwen/', '')}
+              </span>
+            )}
+            {fallbackNotice && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="w-1.5 h-1.5 mr-1.5 bg-amber-400 rounded-full animate-pulse" />
+                {fallbackNotice}
+              </span>
+            )}
           </div>
           <div className="space-y-4">
             <p className="text-xl md:text-2xl text-slate-200 leading-relaxed font-light italic whitespace-pre-wrap">

@@ -1,0 +1,1853 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+export const questions = [
+  // ==========================================
+  // DSA (25 Questions: dsa-01 to dsa-25)
+  // ==========================================
+  {
+    id: "dsa-01",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How would you check for duplicate tags in real time as a user types them into an input field?",
+    rubric: [
+      "Uses a Hash Set to store previously added tags for O(1) average lookup and insertion time.",
+      "Explains that memory scales linearly with the number of unique tags (O(N) space complexity).",
+      "Notes a sorted array with binary search saves pointer overhead but makes dynamic insertions O(N).",
+      "Caps the number of tags and/or normalizes case and whitespace before checking duplicates."
+    ]
+  },
+  {
+    id: "dsa-02",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you track the maximum average latency over a rolling window of the last K incoming requests without re-summing every time?",
+    rubric: [
+      "Applies a fixed-size count-based sliding window algorithm keeping a running sum.",
+      "Maintains a queue or ring buffer of the last K values to subtract the oldest value and add the newest in O(1) time per item.",
+      "Tracks the running maximum of window averages updated whenever a new average exceeds the current peak.",
+      "Explains time complexity is O(1) per incoming event and auxiliary space is O(K) to store the window history."
+    ]
+  },
+  {
+    id: "dsa-03",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you verify whether a binary tree satisfies all properties of a valid binary search tree?",
+    rubric: [
+      "Explains why checking only immediate left and right children is insufficient for deep subtree validation.",
+      "Passes valid minimum and maximum constraint bounds recursively down to left and right subtrees.",
+      "Acceptable alternative: performs an in-order traversal and verifies that visited values are in strictly ascending order.",
+      "Analyzes time complexity as O(N) and space complexity as O(H) on the call stack, where H is tree height."
+    ]
+  },
+  {
+    id: "dsa-04",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "Given an unsorted array of numbers, how do you find two values that sum to a target value in a single pass?",
+    rubric: [
+      "Uses a Hash Map to store previously seen numbers and their indices.",
+      "For each element, checks if (target - current_value) already exists in the map in O(1) average time.",
+      "Returns the indices immediately when a matching complement is found, achieving O(N) overall time.",
+      "Identifies auxiliary space complexity as O(N) in the worst case."
+    ]
+  },
+  {
+    id: "dsa-05",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you determine if a singly linked list contains a cycle without modifying the node values?",
+    rubric: [
+      "Applies Floyd's Tortoise and Hare algorithm using a slow pointer moving 1 step and a fast pointer moving 2 steps.",
+      "Explains that if fast reaches a null reference there is no cycle, and if fast catches slow a cycle exists.",
+      "Identifies time complexity as O(N) and auxiliary space complexity as O(1).",
+      "Acceptable alternative: uses a hash set of visited node references, which achieves O(N) time but requires O(N) auxiliary space."
+    ]
+  },
+  {
+    id: "dsa-06",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How do you validate that a string containing parentheses, square brackets, and curly braces has properly closed and nested brackets?",
+    rubric: [
+      "Uses a Stack data structure to push opening brackets as they are encountered.",
+      "When a closing bracket appears, checks if the stack is non-empty and whether the top matches the corresponding opening bracket.",
+      "Rejects immediately if there is a mismatch, or if brackets remain on the stack at the end of the string.",
+      "Analyzes time complexity as O(N) and space complexity as O(N) in the worst case."
+    ]
+  },
+  {
+    id: "dsa-07",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "Given a collection of meeting time intervals, how would you merge all overlapping meetings into a consolidated schedule?",
+    rubric: [
+      "Sorts the intervals primarily by their start times, taking O(N log N) time.",
+      "Iterates through sorted intervals, comparing the current interval start with the previous interval end.",
+      "Merges intervals by updating the previous interval end to the maximum of both ends if an overlap is detected.",
+      "Appends non-overlapping intervals as separate entries, using O(N) space for the result array."
+    ]
+  },
+  {
+    id: "dsa-08",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How do you reverse a singly linked list in place without allocating new list nodes?",
+    rubric: [
+      "Maintains three pointers: previous (initially null), current (at head), and next.",
+      "In each iteration, stores current.next, updates current.next to point backward to previous, and shifts pointers forward.",
+      "Terminates when current reaches null, returning previous as the new head of the reversed list.",
+      "Achieves O(N) time complexity and O(1) auxiliary space complexity."
+    ]
+  },
+  {
+    id: "dsa-09",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you find the K-th largest number in an unsorted list without fully sorting the entire array?",
+    rubric: [
+      "Uses a Min-Heap of size K, pushing numbers and evicting the root when size exceeds K.",
+      "Explains that after scanning all N elements, the root of the Min-Heap holds the K-th largest number.",
+      "Identifies time complexity as O(N log K) and auxiliary space complexity as O(K).",
+      "Acceptable alternative: uses Quickselect with average O(N) time complexity, noting worst-case O(N^2)."
+    ]
+  },
+  {
+    id: "dsa-10",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you find the lowest common ancestor of two given nodes in a standard binary tree?",
+    rubric: [
+      "Performs a post-order depth-first traversal starting from the root.",
+      "Returns the current node if it matches either target node.",
+      "If both left and right recursive calls return non-null values, the current node is the lowest common ancestor.",
+      "If only one subtree returns non-null, propagates that non-null node upward.",
+      "Analyzes time complexity as O(N) and space complexity as O(H) call stack frames."
+    ]
+  },
+  {
+    id: "dsa-11",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How do you check if a sentence is a palindrome, ignoring non-alphanumeric characters and letter case?",
+    rubric: [
+      "Uses two pointers, one starting at the beginning and one at the end of the string.",
+      "Skips non-alphanumeric characters by advancing or decrementing pointers until valid characters are met.",
+      "Compares characters in a case-insensitive manner, returning false on the first mismatch.",
+      "Achieves O(N) time complexity and O(1) auxiliary space when operating on the string directly."
+    ]
+  },
+  {
+    id: "dsa-12",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you find the length of the longest substring that contains no duplicate characters?",
+    rubric: [
+      "Applies a dynamic sliding window with left and right pointers.",
+      "Uses a hash map or integer array to store the most recent index of each visited character.",
+      "When a duplicate character is encountered, shifts the left pointer past the previous occurrence.",
+      "Updates the maximum length at each step, running in O(N) time and O(min(N, charset)) space."
+    ]
+  },
+  {
+    id: "dsa-13",
+    topic: "DSA",
+    difficulty: "hard",
+    question: "Given an elevation map represented by an array of non-negative integers, how do you calculate how much rainwater can be trapped after raining?",
+    rubric: [
+      "Recognizes that water trapped at index i depends on min(max_left, max_right) - height[i].",
+      "Implements a two-pointer approach starting from both ends, tracking left_max and right_max.",
+      "Advances the pointer with the smaller boundary inward, adding trapped water to total in O(1) space.",
+      "Contrasts with precomputing prefix/suffix arrays which achieves O(N) time but requires O(N) space."
+    ]
+  },
+  {
+    id: "dsa-14",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How does binary search find a target number in a sorted array, and what condition terminates the search?",
+    rubric: [
+      "Compares target with the midpoint value, dividing the search space in half each iteration.",
+      "Calculates midpoint safely (e.g., low + (high - low) / 2) to avoid integer overflow.",
+      "Adjusts low or high boundary depending on whether target is greater or smaller than midpoint.",
+      "Terminates when target is found or when low exceeds high, running in O(log N) time and O(1) space."
+    ]
+  },
+  {
+    id: "dsa-15",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "In a grid where fresh oranges rot if adjacent to a rotten orange, how do you find the minimum minutes until no fresh oranges remain?",
+    rubric: [
+      "Identifies multi-source Breadth-First Search (BFS) as the correct pattern for shortest-time level propagation.",
+      "Initializes a queue with all initially rotten orange coordinates and counts total fresh oranges.",
+      "Processes queue level by level, decrementing fresh count and enqueuing newly infected neighbors.",
+      "Returns elapsed minutes when fresh count reaches zero, or -1 if unreachable, taking O(Rows * Cols) time."
+    ]
+  },
+  {
+    id: "dsa-16",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "Given an array of strings, how do you group all anagrams together efficiently?",
+    rubric: [
+      "Uses a Hash Map where keys represent the canonical form and values are lists of anagram words.",
+      "Generates keys either by sorting string characters (O(K log K) per word) or counting character frequencies (O(K) per word).",
+      "Inserts each word into the map bucket corresponding to its computed key.",
+      "Collects map values into a list of lists, taking O(N * K) time with character count keys."
+    ]
+  },
+  {
+    id: "dsa-17",
+    topic: "DSA",
+    difficulty: "hard",
+    question: "How do you find the median of two separate sorted arrays in logarithmic time without merging them completely?",
+    rubric: [
+      "Applies binary search on the partition of the smaller array.",
+      "Partitions both arrays such that the combined left half equals the combined right half in length.",
+      "Verifies partition validity by checking that max_left_A <= min_right_B and max_left_B <= min_right_A.",
+      "Calculates median from boundary elements in O(log(min(M, N))) time and O(1) space."
+    ]
+  },
+  {
+    id: "dsa-18",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How do you find the index of the first character in a string that does not repeat anywhere else?",
+    rubric: [
+      "Performs an initial pass to count the frequency of each character using a Hash Map or fixed array.",
+      "Performs a second linear scan through the string, returning the index of the first character with a count of one.",
+      "Returns -1 if every character in the string repeats.",
+      "Analyzes time complexity as O(N) and space complexity as O(1) given a bounded alphabet."
+    ]
+  },
+  {
+    id: "dsa-19",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "How do you return the node values of a binary tree level by level from top to bottom?",
+    rubric: [
+      "Uses a Queue data structure to perform Breadth-First Search (BFS).",
+      "Records the queue size at the start of each level loop to process all nodes of the current depth together.",
+      "Enqueues left and right children of each dequeued node for the next depth level.",
+      "Runs in O(N) time complexity and O(W) auxiliary space where W is the maximum tree width."
+    ]
+  },
+  {
+    id: "dsa-20",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "Given daily temperatures, how do you find how many days you would have to wait until a warmer temperature for each day?",
+    rubric: [
+      "Uses a Monotonic Decreasing Stack storing indices of previous cooler days.",
+      "When current temperature is warmer than the temperature at the stack's top index, pops and records the day difference.",
+      "Pushes current day index onto stack after resolving all cooler previous days.",
+      "Runs in O(N) time because each index is pushed and popped at most once, using O(N) space."
+    ]
+  },
+  {
+    id: "dsa-21",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "How do you invert a binary tree so that every left and right child are swapped across all levels?",
+    rubric: [
+      "Recursively visits each node in the tree and swaps its left and right pointers.",
+      "Recursively calls the invert function on both swapped subtrees until reaching null base cases.",
+      "Acceptable alternative: uses an iterative queue or stack to swap children level by level.",
+      "Analyzes time complexity as O(N) and space complexity as O(H) call stack frames."
+    ]
+  },
+  {
+    id: "dsa-22",
+    topic: "DSA",
+    difficulty: "medium",
+    question: "Given a list of prerequisite course pairs, how do you determine if it is possible for a student to finish all courses?",
+    rubric: [
+      "Models courses and prerequisites as a directed graph.",
+      "Checks for cycles in the directed graph using Kahn's algorithm (indegree BFS) or DFS with three node coloring states.",
+      "Under Kahn's algorithm, enqueues nodes with zero indegree and decrements neighbor indegrees as nodes are processed.",
+      "Concludes courses can be finished if total processed nodes equals course count, taking O(V + E) time."
+    ]
+  },
+  {
+    id: "dsa-23",
+    topic: "DSA",
+    difficulty: "hard",
+    question: "What data structures would you combine to implement a Least Recently Used (LRU) cache with O(1) get and put operations?",
+    rubric: [
+      "Combines a Hash Map with a Doubly Linked List.",
+      "Hash Map maps keys to Doubly Linked List nodes for O(1) key lookups.",
+      "Doubly Linked List allows moving accessed nodes to the head and evicting tail nodes in O(1) time without shifting arrays.",
+      "On put, updates existing key or evicts the least recently used tail node when capacity is exceeded."
+    ]
+  },
+  {
+    id: "dsa-24",
+    topic: "DSA",
+    difficulty: "easy",
+    question: "Given two integer arrays, how do you find all unique common elements present in both arrays?",
+    rubric: [
+      "Loads the elements of the first array into a Hash Set to remove duplicates.",
+      "Iterates through the second array, checking if elements exist in the first set in O(1) time.",
+      "Adds matching elements to a result set and removes them from the initial set to avoid duplicate recording.",
+      "Analyzes time complexity as O(N + M) and auxiliary space complexity as O(min(N, M))."
+    ]
+  },
+  {
+    id: "dsa-25",
+    topic: "DSA",
+    difficulty: "hard",
+    question: "Given an m-by-n grid of letters, how do you determine if a given word exists along horizontally or vertically adjacent cells without reusing any cell?",
+    rubric: [
+      "Uses Depth-First Search (DFS) with Backtracking starting from cells matching the word's first letter.",
+      "Temporarily marks the current cell as visited before exploring up, down, left, and right neighbors.",
+      "Restores the cell's original character when unwinding the recursion to allow other search paths to use it.",
+      "Terminates early and returns true as soon as the word is matched, or returns false if all paths are exhausted."
+    ]
+  },
+
+  // ==========================================
+  // DBMS (20 Questions: dbms-01 to dbms-20)
+  // ==========================================
+  {
+    id: "dbms-01",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "Two users click 'Book Seat' at the exact same millisecond for the last available concert ticket. How does your database ensure only one of them gets confirmed?",
+    rubric: [
+      "Uses a database transaction with row-level locking (such as SELECT ... FOR UPDATE) to hold exclusive access on the seat record.",
+      "Acceptable alternative: uses optimistic concurrency control checking a version number or status flag during the UPDATE statement.",
+      "Explains that the winning transaction commits while the conflicting transaction aborts, rolls back, or raises an error.",
+      "Compares trade-offs: pessimistic locks risk thread contention under heavy traffic, while optimistic locks require application retry loops."
+    ]
+  },
+  {
+    id: "dbms-02",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "An orders table query with two million rows suddenly starts taking eight seconds during peak hours. How do you inspect what the database engine is doing, and what would you look for?",
+    rubric: [
+      "Runs EXPLAIN or EXPLAIN ANALYZE on the slow SQL query to review the execution plan.",
+      "Checks whether the query planner performs a full table scan instead of using an index scan.",
+      "Checks whether composite index column ordering matches the query WHERE, JOIN, and ORDER BY clauses.",
+      "Checks if wrapping indexed columns in functions or implicit type conversions is invalidating index usage."
+    ]
+  },
+  {
+    id: "dbms-03",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "What is the difference between a primary key and a unique key on a relational database table?",
+    rubric: [
+      "States that a primary key uniquely identifies each row and strictly forbids NULL values.",
+      "Explains that a unique key enforces uniqueness across column values but generally permits one or more NULL values depending on the SQL engine.",
+      "Points out that a table can have only one primary key, but multiple unique keys can be defined.",
+      "Notes primary keys are automatically indexed (often clustered index by default in engines like MySQL InnoDB)."
+    ]
+  },
+  {
+    id: "dbms-04",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "What does the N+1 query problem mean when an ORM loads a list of authors and their books, and how do you resolve it?",
+    rubric: [
+      "Explains N+1: one query fetches N parent records (authors), followed by N individual separate queries to fetch related child records (books).",
+      "Identifies the cause as lazy-loading child associations inside a loop in application code.",
+      "Solves the issue using eager loading (e.g., JOIN, include, or fetching all child IDs in a single WHERE IN query).",
+      "Compares network round-trip overhead: reducing N+1 queries to 1 or 2 queries dramatically lowers latency."
+    ]
+  },
+  {
+    id: "dbms-05",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "Why does database normalization split data across multiple tables, and what primary issue does it eliminate?",
+    rubric: [
+      "Explains normalization organizes data into related tables to eliminate data redundancy.",
+      "Explains it prevents update, insertion, and deletion anomalies when shared attributes change.",
+      "Identifies that normalized schemas require foreign keys and multi-table JOIN operations to reconstruct records.",
+      "Mentions that high normalization levels can reduce read performance under massive scale, prompting deliberate denormalization."
+    ]
+  },
+  {
+    id: "dbms-06",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "What is the practical difference between a clustered index and a non-clustered index on disk?",
+    rubric: [
+      "Explains a clustered index determines the physical storage order of actual table rows on disk.",
+      "States that a table can have only one clustered index because disk rows can be ordered physically in only one sequence.",
+      "Explains non-clustered indexes store sorted key values along with pointers (row IDs or primary keys) back to the actual data pages.",
+      "Identifies non-clustered lookups may require an additional lookup step to retrieve non-indexed columns unless the query is covered."
+    ]
+  },
+  {
+    id: "dbms-07",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "What happens during a dirty read in a relational database, and which isolation level prevents it?",
+    rubric: [
+      "Defines a dirty read: transaction A reads data modified by transaction B before transaction B has committed.",
+      "Explains if transaction B rolls back, transaction A operated on data that never officially existed.",
+      "Identifies Read Committed isolation level as the minimum level required to prevent dirty reads.",
+      "Contrasts Read Committed with Read Uncommitted where dirty reads are permitted."
+    ]
+  },
+  {
+    id: "dbms-08",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "What is the difference between an INNER JOIN and a LEFT JOIN when querying two related tables?",
+    rubric: [
+      "Explains INNER JOIN returns only rows that have matching values in both tables based on the join predicate.",
+      "Explains LEFT JOIN returns all rows from the left table, populated with NULL values for right table columns when no match exists.",
+      "Identifies that rows from the left table with no corresponding right table entry are excluded in an INNER JOIN.",
+      "Provides a common use case: LEFT JOIN to find parent records that have zero associated child records."
+    ]
+  },
+  {
+    id: "dbms-09",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "Why does running an unindexed wildcard search like WHERE username LIKE '%alex%' result in a full table scan even if username has an index?",
+    rubric: [
+      "Explains B-Tree indexes sort strings lexicographically from left to right (prefix ordering).",
+      "Points out that a leading wildcard ('%alex%') obscures the starting characters, making root-to-leaf binary traversal impossible.",
+      "Notes that a trailing wildcard ('alex%') can utilize a B-Tree index scan because the prefix is fixed.",
+      "Recommends full-text search indexes, trigram indexes, or reverse indexes when leading wildcard searches are necessary."
+    ]
+  },
+  {
+    id: "dbms-10",
+    topic: "DBMS",
+    difficulty: "hard",
+    question: "What is the difference between optimistic concurrency control and pessimistic locking, and when would you prefer optimistic locking?",
+    rubric: [
+      "Defines pessimistic locking: acquires row or table locks before reading or modifying, blocking concurrent transactions.",
+      "Defines optimistic locking: allows concurrent reads and writes without locks, verifying a version number or timestamp before committing.",
+      "Explains optimistic locking rejects or retries transactions whose version has changed since being read.",
+      "Prefers optimistic locking in low-contention, read-heavy workloads to avoid lock waiting and database connection starvation."
+    ]
+  },
+  {
+    id: "dbms-11",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "What is a database transaction, and why is the rollback operation critical when a multi-step operation fails midway?",
+    rubric: [
+      "Defines a transaction as a logical unit of work containing one or more database operations.",
+      "Explains Atomicity: either all operations in the transaction succeed and commit, or all are reverted.",
+      "Explains rollback restores the database to its exact pre-transaction state if an error or crash occurs midway.",
+      "Gives a concrete example: deducting money from account A must roll back if adding money to account B fails."
+    ]
+  },
+  {
+    id: "dbms-12",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "When would you choose a NoSQL document database like MongoDB over a traditional relational database like PostgreSQL?",
+    rubric: [
+      "Considers schema flexibility: document databases allow evolving, polymorphic schemas without running explicit ALTER TABLE migrations.",
+      "Considers data access patterns: document databases store self-contained hierarchical objects that can be retrieved in a single read without JOINs.",
+      "Considers ACID constraints: relational databases provide robust multi-table transactions, foreign key constraints, and relational integrity.",
+      "Acceptable alternative: mentions modern PostgreSQL supports native JSONB documents alongside relational tables."
+    ]
+  },
+  {
+    id: "dbms-13",
+    topic: "DBMS",
+    difficulty: "hard",
+    question: "What causes a deadlock between two concurrent database transactions, and how does the database engine detect and resolve it?",
+    rubric: [
+      "Explains deadlock: transaction 1 holds lock A and waits for lock B, while transaction 2 holds lock B and waits for lock A.",
+      "Explains the database engine detects the deadlock cycle using a wait-for graph or lock timeout mechanism.",
+      "Resolves the deadlock automatically by selecting one transaction as the victim, aborting it, and rolling back its changes.",
+      "Advises applications to implement automatic retry logic when receiving deadlock error codes and acquire locks in a consistent global order."
+    ]
+  },
+  {
+    id: "dbms-14",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "What is the purpose of database foreign key constraints, and what does ON DELETE CASCADE do?",
+    rubric: [
+      "Explains foreign keys enforce referential integrity between child and parent tables by preventing orphaned records.",
+      "Explains ON DELETE CASCADE automatically deletes child records whenever their referenced parent record is deleted.",
+      "Contrasts with ON DELETE RESTRICT or SET NULL, which reject parent deletion or nullify child foreign key values.",
+      "Mentions cascading deletes must be used with caution because large cascades can cause long locks and accidental data loss."
+    ]
+  },
+  {
+    id: "dbms-15",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "How does database connection pooling improve backend application performance and resource usage?",
+    rubric: [
+      "Explains establishing a new database connection incurs significant overhead from TCP handshakes, TLS negotiation, and authentication.",
+      "Explains a connection pool maintains a set of warm, reusable connections that threads or requests borrow and return.",
+      "Prevents database server overload by capping the maximum concurrent open connections.",
+      "Identifies risks of poorly sized pools: undersized pools cause request queue timeouts, while oversized pools exhaust database RAM."
+    ]
+  },
+  {
+    id: "dbms-16",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "What is the difference between the WHERE clause and the HAVING clause in SQL queries with aggregation?",
+    rubric: [
+      "Explains WHERE filters individual rows before grouping and aggregation operations occur.",
+      "Explains HAVING filters summarized groups after the GROUP BY clause and aggregate functions (like COUNT or SUM) are evaluated.",
+      "Notes that WHERE cannot evaluate aggregate functions directly because aggregation has not yet occurred.",
+      "Points out that pre-filtering rows with WHERE before GROUP BY significantly reduces intermediate data volume and query time."
+    ]
+  },
+  {
+    id: "dbms-17",
+    topic: "DBMS",
+    difficulty: "hard",
+    question: "What is write-ahead logging (WAL), and how does it guarantee durability if the database server abruptly loses power?",
+    rubric: [
+      "Explains write-ahead logging writes transaction change records to sequential disk logs before applying updates to data pages.",
+      "Explains sequential append-only disk writes are much faster than random I/O writes to dirty table pages.",
+      "On power failure or crash, the database reads the WAL during recovery, replaying committed transactions (REDO) and reverting uncommitted ones (UNDO).",
+      "Ensures data durability without requiring synchronous flushing of dirty memory pages on every single transaction."
+    ]
+  },
+  {
+    id: "dbms-18",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "What is database sharding, and how does it differ from vertical scaling?",
+    rubric: [
+      "Explains vertical scaling adds CPU, RAM, or storage to a single server instance, hitting hardware and cost ceilings.",
+      "Explains sharding partitions database rows horizontally across multiple independent database servers (shards).",
+      "Uses a shard key (like user_id or region) to route reads and writes to the correct database instance.",
+      "Highlights trade-offs of sharding: complicates multi-shard JOINs, distributed transactions, and schema migrations."
+    ]
+  },
+  {
+    id: "dbms-19",
+    topic: "DBMS",
+    difficulty: "medium",
+    question: "What is the purpose of a database view, and how does a materialized view differ from a standard view?",
+    rubric: [
+      "Explains a standard view is a saved SQL query that runs dynamically every time the view is queried, storing no data.",
+      "Explains a materialized view computes and physically persists query results on disk like a regular table.",
+      "Highlights that materialized views provide fast reads on expensive aggregations and complex JOINs.",
+      "Notes materialized views require periodic or trigger-based refreshes to prevent reading stale data."
+    ]
+  },
+  {
+    id: "dbms-20",
+    topic: "DBMS",
+    difficulty: "easy",
+    question: "Why should user input always be passed using parameterized queries or prepared statements rather than string concatenation?",
+    rubric: [
+      "Explains string concatenation allows attackers to inject arbitrary SQL statements (SQL Injection).",
+      "Explains parameterized queries send SQL code and user data separately to the database engine.",
+      "Ensures the database treats parameters strictly as literal values rather than executable SQL syntax.",
+      "Notes prepared statements also allow the database to parse, compile, and cache query execution plans for reuse."
+    ]
+  },
+
+  // ==========================================
+  // OS (15 Questions: os-01 to os-15)
+  // ==========================================
+  {
+    id: "os-01",
+    topic: "OS",
+    difficulty: "easy",
+    question: "What is the fundamental difference between a process and a thread in terms of memory isolation?",
+    rubric: [
+      "Explains that a process possesses its own independent, isolated virtual memory address space.",
+      "Explains that threads belonging to the same process share heap memory, global variables, and open file descriptors.",
+      "Points out that each thread retains its own private stack and register state.",
+      "Identifies that a memory corruption or crash in one thread can terminate the entire host process."
+    ]
+  },
+  {
+    id: "os-02",
+    topic: "OS",
+    difficulty: "medium",
+    question: "Why is context switching between two processes more expensive than switching between two threads of the same process?",
+    rubric: [
+      "Identifies that thread context switches only save and restore CPU registers and stack pointers.",
+      "Explains process context switches require swapping MMU page directory pointers to map a different virtual address space.",
+      "Highlights that changing page tables invalidates the CPU Translation Lookaside Buffer (TLB), causing cold cache misses.",
+      "Notes inter-thread communication uses fast shared memory, while inter-process communication requires OS kernel mediation."
+    ]
+  },
+  {
+    id: "os-03",
+    topic: "OS",
+    difficulty: "medium",
+    question: "What is virtual memory, and what happens when an application attempts to access a page that is currently not in physical RAM?",
+    rubric: [
+      "Defines virtual memory as an abstraction providing each process the illusion of a contiguous, private memory space.",
+      "Explains MMU (Memory Management Unit) hardware translates virtual addresses to physical RAM frames using page tables.",
+      "Explains a Page Fault exception occurs when accessing an unmapped or swapped-out page.",
+      "Describes the OS kernel response: suspends the thread, loads the required page from disk swap into RAM, updates page table, and resumes execution."
+    ]
+  },
+  {
+    id: "os-04",
+    topic: "OS",
+    difficulty: "hard",
+    question: "What are the four necessary Coffman conditions for a deadlock, and how can software architecture prevent circular wait?",
+    rubric: [
+      "Identifies Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait.",
+      "Explains breaking Circular Wait requires establishing a strict global total ordering on all locks/resources.",
+      "Requires threads to acquire locks strictly in increasing numerical or alphabetical order.",
+      "Notes that if every thread acquires lock 1 before lock 2, a circular dependency loop cannot form."
+    ]
+  },
+  {
+    id: "os-05",
+    topic: "OS",
+    difficulty: "easy",
+    question: "What is a CPU context switch, and what hardware state must the operating system save during the switch?",
+    rubric: [
+      "Defines context switch as pausing one executing process or thread to resume another on the CPU core.",
+      "Identifies saving the Program Counter (instruction pointer), CPU general-purpose registers, and stack pointer.",
+      "Stores the saved state into the Process Control Block (PCB) or Thread Control Block (TCB).",
+      "Explains that context switches represent pure system overhead because no user computation occurs during the transition."
+    ]
+  },
+  {
+    id: "os-06",
+    topic: "OS",
+    difficulty: "medium",
+    question: "What is the difference between a mutex and a counting semaphore when synchronizing shared resources?",
+    rubric: [
+      "Explains a mutex is a binary mutual exclusion lock with ownership: only the thread that locked it can unlock it.",
+      "Explains a counting semaphore maintains an integer counter representing available resource slots.",
+      "Notes semaphores allow signaling across threads without ownership restrictions (one thread signals, another waits).",
+      "Gives an example: mutex protects a single critical section; counting semaphore manages a pool of N database connections."
+    ]
+  },
+  {
+    id: "os-07",
+    topic: "OS",
+    difficulty: "medium",
+    question: "What is thrashing in an operating system, and how does it degrade system throughput?",
+    rubric: [
+      "Defines thrashing as a condition where the system spends more time swapping pages in and out of disk than executing instructions.",
+      "Explains it occurs when the sum of active processes' working sets exceeds total physical RAM.",
+      "Identifies symptoms: CPU utilization plummets, disk I/O hits 100 percent, and system responsiveness freezes.",
+      "Mentions operating system mitigations: terminating or suspending low-priority processes, or reducing concurrency."
+    ]
+  },
+  {
+    id: "os-08",
+    topic: "OS",
+    difficulty: "easy",
+    question: "What is the difference between preemptive and non-preemptive CPU scheduling?",
+    rubric: [
+      "Defines preemptive scheduling: OS can interrupt a running process mid-execution (e.g., when a timer tick fires or higher priority process arrives).",
+      "Defines non-preemptive scheduling: a process keeps the CPU until it voluntarily yields, requests I/O, or terminates.",
+      "Points out non-preemptive scheduling risks system lockups if a process enters an infinite loop or executes long CPU calculations.",
+      "Notes modern desktop and server operating systems use preemptive scheduling for fairness and interactive responsiveness."
+    ]
+  },
+  {
+    id: "os-09",
+    topic: "OS",
+    difficulty: "easy",
+    question: "What is a system call, and why does a program have to switch from user mode to kernel mode to write to a file?",
+    rubric: [
+      "Defines a system call as the programmatic interface between a user-space application and privileged OS kernel services.",
+      "Explains user mode runs with restricted CPU privilege levels to prevent direct hardware or memory tampering.",
+      "Explains kernel mode possesses unrestricted access to hardware devices, physical memory, and CPU instructions.",
+      "Notes file I/O requires a system call (like write) triggering a trap/software interrupt to safely delegate device access to the kernel."
+    ]
+  },
+  {
+    id: "os-10",
+    topic: "OS",
+    difficulty: "medium",
+    question: "What is a race condition in multi-threaded programming, and how does a critical section protect against it?",
+    rubric: [
+      "Defines race condition: program output depends on unpredictable thread execution order and timing.",
+      "Identifies that race conditions happen when multiple threads read and write shared data without synchronization.",
+      "Defines critical section as the code block where shared resources are accessed.",
+      "Enforces mutual exclusion (via locks or atomic instructions) so only one thread executes inside the critical section at a time."
+    ]
+  },
+  {
+    id: "os-11",
+    topic: "OS",
+    difficulty: "hard",
+    question: "What causes a zombie process and an orphan process in Unix-like systems, and how does the OS clean them up?",
+    rubric: [
+      "Explains zombie: child process has terminated, but parent process has not yet read its exit status via wait() or waitpid().",
+      "Notes zombie processes consume no CPU or RAM, but hold a slot in the operating system Process Table.",
+      "Explains orphan: parent process terminates before its child; the OS reparents the orphan to process 1 (init/systemd).",
+      "Explains init automatically calls wait() on adopted orphans when they terminate, cleaning up their process table entries."
+    ]
+  },
+  {
+    id: "os-12",
+    topic: "OS",
+    difficulty: "medium",
+    question: "What is the difference between memory fragmentation caused by paging versus segmentation?",
+    rubric: [
+      "Defines paging: divides memory into fixed-size blocks (pages and frames).",
+      "Defines segmentation: divides memory into variable-size logical segments (code, stack, heap).",
+      "Explains paging eliminates external fragmentation but can produce internal fragmentation within the last page.",
+      "Explains segmentation avoids internal fragmentation but creates external fragmentation as variable-sized gaps emerge between allocations."
+    ]
+  },
+  {
+    id: "os-13",
+    topic: "OS",
+    difficulty: "easy",
+    question: "What is the purpose of CPU caches (L1, L2, L3), and how does spatial locality improve cache hits?",
+    rubric: [
+      "Explains CPU caches are small, high-speed SRAM buffers located directly on or near the processor chip.",
+      "Explains they bridge the immense speed gap between fast CPU execution cycles and slower main DRAM access times.",
+      "Defines spatial locality: accessing a memory address makes it very likely nearby addresses will be accessed soon.",
+      "Explains cache lines load 64 contiguous bytes at a time, making sequential array traversals fast due to high cache hit rates."
+    ]
+  },
+  {
+    id: "os-14",
+    topic: "OS",
+    difficulty: "medium",
+    question: "What is the difference between blocking I/O and non-blocking I/O from the operating system perspective?",
+    rubric: [
+      "Defines blocking I/O: calling thread is moved to the wait/blocked queue by the OS scheduler until data is ready.",
+      "Defines non-blocking I/O: system call returns immediately with data or an error/status indicating data is not yet available.",
+      "Explains non-blocking I/O enables single-threaded event loops (using epoll/kqueue) to monitor thousands of file descriptors concurrently.",
+      "Contrasts resource footprint: blocking I/O requires allocating one OS thread per concurrent connection."
+    ]
+  },
+  {
+    id: "os-15",
+    topic: "OS",
+    difficulty: "easy",
+    question: "Why does the operating system use an interrupt rather than having the CPU continuously poll hardware devices?",
+    rubric: [
+      "Defines polling: CPU runs a busy-wait loop constantly checking hardware status flags, wasting CPU cycles.",
+      "Defines interrupt: hardware sends an electrical signal to the CPU when an event (like packet arrival or keypress) occurs.",
+      "Explains the CPU temporarily suspends current execution, saves state, and runs the designated Interrupt Service Routine (ISR).",
+      "Highlights efficiency: interrupts free the CPU to do useful user computation while hardware devices operate asynchronously."
+    ]
+  },
+
+  // ==========================================
+  // Networking (10 Questions: net-01 to net-10)
+  // ==========================================
+  {
+    id: "net-01",
+    topic: "Networking",
+    difficulty: "easy",
+    question: "How does the TCP three-way handshake establish a reliable connection between a client and a server?",
+    rubric: [
+      "Explains the step-by-step sequence: SYN from client, SYN-ACK from server, ACK from client.",
+      "Explains the exchange synchronizes initial sequence numbers (ISNs) for both directions.",
+      "Ensures both client and server verify the other endpoint is active and capable of bidirectional transmission.",
+      "Contrasts with UDP which is connectionless and sends datagrams without a preliminary handshake."
+    ]
+  },
+  {
+    id: "net-02",
+    topic: "Networking",
+    difficulty: "medium",
+    question: "What happens step-by-step when you type a website URL into a browser until the IP address is resolved?",
+    rubric: [
+      "Checks browser cache, operating system DNS cache, and local hosts file.",
+      "Queries the recursive DNS resolver provided by the ISP or network router.",
+      "Resolver queries Root Name Server, which refers to the corresponding Top-Level Domain (TLD) server (e.g., .com).",
+      "Resolver queries TLD server, which refers to the Authoritative Name Server that returns the target IP address.",
+      "Resolver caches the resolved IP according to the record's Time-To-Live (TTL) before returning it to the browser."
+    ]
+  },
+  {
+    id: "net-03",
+    topic: "Networking",
+    difficulty: "medium",
+    question: "Why would an application choose UDP instead of TCP for live voice calls or multiplayer gaming?",
+    rubric: [
+      "Explains TCP retransmits lost packets and enforces in-order delivery, which causes head-of-line blocking latency.",
+      "Explains in real-time audio and fast games, an outdated packet is useless and waiting for retransmission introduces unacceptable lag.",
+      "Notes UDP has minimal header overhead (8 bytes vs 20+ bytes in TCP) and zero connection setup delay.",
+      "Acceptable alternative: mentions modern protocols like WebRTC or QUIC run on top of UDP with custom congestion control."
+    ]
+  },
+  {
+    id: "net-04",
+    topic: "Networking",
+    difficulty: "hard",
+    question: "What occurs during an HTTPS TLS handshake before encrypted application data begins flowing?",
+    rubric: [
+      "Client Hello sends supported cipher suites and random bytes; Server Hello responds with chosen cipher and server random bytes.",
+      "Server sends its digital certificate, which the client validates against trusted root Certificate Authorities (CAs).",
+      "Client and server perform key exchange (e.g., ECDHE) to compute a shared premaster secret.",
+      "Both parties derive symmetric session keys (e.g., AES) and verify encryption integrity with Finished messages before sending HTTP data."
+    ]
+  },
+  {
+    id: "net-05",
+    topic: "Networking",
+    difficulty: "easy",
+    question: "What is the difference between HTTP GET and POST methods regarding idempotency and payload body?",
+    rubric: [
+      "Explains GET is intended to retrieve data without altering server state (safe and idempotent).",
+      "Explains POST is intended to submit data to create or process resources on the server (non-idempotent).",
+      "States GET transmits parameters inside URL query strings, whereas POST carries data within the HTTP request body.",
+      "Notes GET requests can be cached and bookmarked by browsers, whereas POST requests are not cached by default."
+    ]
+  },
+  {
+    id: "net-06",
+    topic: "Networking",
+    difficulty: "medium",
+    question: "What causes a Cross-Origin Resource Sharing (CORS) error in a browser, and how does the server fix it?",
+    rubric: [
+      "Explains the Same-Origin Policy in browsers blocks frontend code from reading responses from a different origin (domain, protocol, or port).",
+      "Explains browser sends an HTTP OPTIONS preflight request before certain cross-origin mutations or custom header requests.",
+      "Fixed on server by returning appropriate Access-Control-Allow-Origin headers specifying the allowed frontend origin or wildcard.",
+      "Emphasizes CORS is enforced entirely by client web browsers, not by server-to-server or curl requests."
+    ]
+  },
+  {
+    id: "net-07",
+    topic: "Networking",
+    difficulty: "easy",
+    question: "What is the difference between an IPv4 address and an IPv6 address, and why was IPv6 created?",
+    rubric: [
+      "States IPv4 uses 32-bit addresses formatted as 4 decimal octets, providing roughly 4.3 billion unique addresses.",
+      "States IPv6 uses 128-bit addresses formatted as 8 hexadecimal groups, providing a virtually inexhaustible address pool.",
+      "Explains IPv6 was created because the explosion of internet-connected devices completely exhausted the IPv4 public address space.",
+      "Notes interim mechanisms like Network Address Translation (NAT) prolong IPv4 by mapping private subnets to shared public IPs."
+    ]
+  },
+  {
+    id: "net-08",
+    topic: "Networking",
+    difficulty: "medium",
+    question: "How does HTTP/2 multiplexing improve page load performance compared to HTTP/1.1?",
+    rubric: [
+      "Explains HTTP/1.1 requires separate TCP connections or pipelining which suffers from head-of-line blocking (one slow response delays all others).",
+      "Explains HTTP/2 splits requests and responses into binary frames multiplexed over a single persistent TCP connection.",
+      "Allows interleaving multiple concurrent streams without waiting for preceding responses to finish.",
+      "Adds header compression (HPACK) and server push capabilities to further eliminate redundant network overhead."
+    ]
+  },
+  {
+    id: "net-09",
+    topic: "Networking",
+    difficulty: "easy",
+    question: "What does the Time-To-Live (TTL) field in an IP packet header prevent?",
+    rubric: [
+      "Defines TTL as an integer counter decremented by 1 by each network router that forwards the packet.",
+      "Explains that when TTL drops to 0, the router discards the packet and sends an ICMP Time Exceeded message back to sender.",
+      "Prevents packets from looping infinitely through network misconfigurations and saturating routing bandwidth.",
+      "Notes diagnostic tools like traceroute deliberately vary TTL from 1 upward to map intermediate router hops."
+    ]
+  },
+  {
+    id: "net-10",
+    topic: "Networking",
+    difficulty: "medium",
+    question: "How does a WebSocket connection differ from standard HTTP polling for real-time chat applications?",
+    rubric: [
+      "Explains polling repeatedly sends HTTP GET requests at fixed intervals, wasting bandwidth on empty responses and repeated headers.",
+      "Explains WebSocket starts as an HTTP Upgrade request and transitions to a persistent, full-duplex TCP connection.",
+      "Allows both client and server to push lightweight messages bi-directionally at any time with minimal frame overhead.",
+      "Acceptable alternative: compares with Server-Sent Events (SSE) which provides one-way server-to-client streaming over HTTP."
+    ]
+  },
+
+  // ==========================================
+  // React (20 Questions: react-01 to react-20)
+  // ==========================================
+  {
+    id: "react-01",
+    topic: "React",
+    difficulty: "easy",
+    question: "A teammate updates a list of items by pushing directly into the state array and calls setItems(items), but the UI refuses to update. Why did that happen, and how do you fix it?",
+    rubric: [
+      "Explains that React compares state updates using shallow reference equality (Object.is).",
+      "Explains that mutating an existing array in place leaves the array reference identical, so React skips re-rendering.",
+      "Fixes the issue by creating a new array reference (e.g., using spread setItems([...items, newItem]) or non-mutating concat).",
+      "Mentions that mutating state directly breaks features like React.memo prop comparisons and time-travel debugging."
+    ]
+  },
+  {
+    id: "react-02",
+    topic: "React",
+    difficulty: "medium",
+    question: "When a user quickly clicks between different user profile tabs, the screen briefly flashes the wrong profile data from a request sent earlier. What caused this race condition, and how do you prevent it?",
+    rubric: [
+      "Explains that asynchronous network responses can arrive out of order (a slower earlier request resolving after a faster subsequent request).",
+      "Implements an active or cancelled flag inside a useEffect cleanup function so stale responses are ignored when dependencies change.",
+      "Acceptable alternative: implements request cancellation using an AbortController inside the useEffect cleanup.",
+      "Notes modern data fetching libraries (such as TanStack Query or SWR) manage query keys, deduplication, and cancellation automatically."
+    ]
+  },
+  {
+    id: "react-03",
+    topic: "React",
+    difficulty: "easy",
+    question: "Why should you avoid using array indices as the key prop when rendering a dynamic list that supports reordering or deleting items?",
+    rubric: [
+      "Explains keys give elements a stable identity across renders so React's reconciliation diffing knows which items changed, moved, or were deleted.",
+      "Points out that if items are deleted or prepended, array indices change for existing items, confusing React's diffing algorithm.",
+      "Describes bugs caused by index keys: uncontrolled input state or CSS animations staying bound to the wrong position.",
+      "Recommends using unique, stable IDs from database records or generated IDs as keys."
+    ]
+  },
+  {
+    id: "react-04",
+    topic: "React",
+    difficulty: "medium",
+    question: "What is a stale closure in a React useEffect hook, and how does the dependency array prevent it?",
+    rubric: [
+      "Explains a stale closure occurs when an asynchronous callback captures state or prop variables from an earlier render pass.",
+      "Points out that omitting a state variable from the useEffect dependency array prevents the effect from re-running when that state changes.",
+      "Shows that the callback continues referencing the outdated snapshot from when the effect was initially created.",
+      "Solves the issue by including all referenced reactive values in the dependency array or using functional state updates (e.g., setCount(prev => prev + 1))."
+    ]
+  },
+  {
+    id: "react-05",
+    topic: "React",
+    difficulty: "easy",
+    question: "What does lifting state up mean in React, and when is it necessary?",
+    rubric: [
+      "Defines lifting state up as moving state from child components to their closest common ancestor.",
+      "Explains it is necessary when two or more sibling components need to share or reflect the same changing data.",
+      "Describes passing the state down to children via props and passing updater callbacks down to allow children to request changes.",
+      "Maintains a single source of truth across components without introducing complex global stores prematurely."
+    ]
+  },
+  {
+    id: "react-06",
+    topic: "React",
+    difficulty: "medium",
+    question: "What is the difference between React.memo, useMemo, and useCallback regarding component performance?",
+    rubric: [
+      "Explains React.memo is a higher-order component that skips re-rendering a whole component if its props have not changed.",
+      "Explains useMemo caches the computed result of an expensive calculation between renders until dependencies change.",
+      "Explains useCallback caches a function definition reference between renders so passing it to memoized children does not break their prop comparison.",
+      "Cautions that memoization introduces memory and comparison overhead, so it should be applied based on measured performance bottlenecks rather than everywhere."
+    ]
+  },
+  {
+    id: "react-07",
+    topic: "React",
+    difficulty: "medium",
+    question: "Why does updating a React Context value cause all consuming components to re-render, and how can you minimize unnecessary renders?",
+    rubric: [
+      "Explains any component calling useContext re-renders whenever the Context Provider value reference changes.",
+      "Points out that putting unrelated values into a single large context object triggers re-renders even in components that only read one slice.",
+      "Solves by splitting large contexts into smaller, granular contexts (e.g., separate ThemeContext and AuthContext).",
+      "Acceptable alternative: splits state and dispatch into separate contexts or wraps consumer sub-trees in memoized components."
+    ]
+  },
+  {
+    id: "react-08",
+    topic: "React",
+    difficulty: "easy",
+    question: "What is the difference between a controlled component and an uncontrolled component in React forms?",
+    rubric: [
+      "Defines controlled component: input value is driven completely by React state via value and onChange props.",
+      "Defines uncontrolled component: input value is managed directly by the browser DOM itself.",
+      "Explains accessing uncontrolled values using a React ref (e.g., useRef).",
+      "Highlights controlled components allow instant validation, conditional formatting, and disabling submit buttons based on current state."
+    ]
+  },
+  {
+    id: "react-09",
+    topic: "React",
+    difficulty: "medium",
+    question: "What does the cleanup function returned inside a useEffect hook do, and when does React invoke it?",
+    rubric: [
+      "Explains the cleanup function cleans up side effects such as event listeners, timers, subscriptions, or network connections.",
+      "Emphasizes React executes the cleanup function before re-running the effect when dependency values change.",
+      "Emphasizes React also executes the cleanup function when the component unmounts from the DOM.",
+      "Explains omitting cleanup can cause memory leaks, duplicate event listener triggers, or setting state on unmounted components."
+    ]
+  },
+  {
+    id: "react-10",
+    topic: "React",
+    difficulty: "hard",
+    question: "How does React's reconciliation diffing heuristic determine whether to update an existing DOM node or replace the entire subtree?",
+    rubric: [
+      "Explains the root element type check: if two elements have different component or HTML tag types, React tears down the old tree and builds a new one.",
+      "Explains that when tearing down a subtree, all child component state is destroyed.",
+      "Explains that if element types match, React retains the underlying DOM node and only updates modified attributes or props.",
+      "Explains list reconciliation uses keys to match child elements across renders, avoiding index-based element destruction."
+    ]
+  },
+  {
+    id: "react-11",
+    topic: "React",
+    difficulty: "easy",
+    question: "What are the rules of React Hooks, and why must hooks only be called at the top level of a component?",
+    rubric: [
+      "States hooks must only be called at the top level (never inside loops, conditions, or nested functions).",
+      "States hooks must only be called from React function components or custom hooks.",
+      "Explains React relies on call order consistency between renders to track which hook corresponds to which internal state cell in an internal array.",
+      "Shows how placing hooks inside an if condition shifts the execution index and corrupts subsequent hook state values."
+    ]
+  },
+  {
+    id: "react-12",
+    topic: "React",
+    difficulty: "medium",
+    question: "What is the difference between useState and useReducer, and when should you prefer useReducer?",
+    rubric: [
+      "Explains useState is ideal for independent, simple state values (strings, booleans, counters).",
+      "Explains useReducer manages state transitions through action objects dispatched to a pure reducer function (state, action) => newState.",
+      "Prefers useReducer when state logic is complex, involves multiple interdependent sub-values, or when next state depends on previous state in intricate ways.",
+      "Notes useReducer helps decouple state update logic from UI rendering, making logic easier to unit test in isolation."
+    ]
+  },
+  {
+    id: "react-13",
+    topic: "React",
+    difficulty: "easy",
+    question: "What is the difference between props and state in a React component?",
+    rubric: [
+      "Explains props are read-only inputs passed from a parent component to configure a child.",
+      "Explains state is private data managed and owned internally by the component that can change over time.",
+      "Points out that a component cannot modify its own props directly.",
+      "Explains changing state triggers a re-render of the component and its children."
+    ]
+  },
+  {
+    id: "react-14",
+    topic: "React",
+    difficulty: "medium",
+    question: "How does a React Error Boundary catch runtime errors, and what kinds of errors can it not catch?",
+    rubric: [
+      "Explains an Error Boundary is a class component implementing componentDidCatch or static getDerivedStateFromError.",
+      "Catches rendering errors, lifecycle method errors, and constructor errors in child components and renders a fallback UI.",
+      "Identifies that Error Boundaries cannot catch errors inside asynchronous callbacks, event handlers, server-side rendering, or within the boundary itself.",
+      "Explains event handlers require standard try/catch blocks because their errors occur outside the React render lifecycle."
+    ]
+  },
+  {
+    id: "react-15",
+    topic: "React",
+    difficulty: "easy",
+    question: "Why should you use the functional updater form of setState, like setCount(prev => prev + 1), when updating state based on previous state?",
+    rubric: [
+      "Explains React batches state updates for performance, so state updates do not apply synchronously immediately after the call.",
+      "Points out calling setCount(count + 1) three times in the same handler will only increment by 1 because all three calls read the same snapshot value.",
+      "Explains the updater function setCount(prev => prev + 1) receives the most up-to-date queued state value.",
+      "Ensures reliable sequential updates without stale state reference issues."
+    ]
+  },
+  {
+    id: "react-16",
+    topic: "React",
+    difficulty: "medium",
+    question: "What is the purpose of useRef, and how does it differ from useState regarding component re-renders?",
+    rubric: [
+      "Explains useRef returns a mutable object with a .current property that persists across renders.",
+      "Crucial distinction: updating ref.current does NOT trigger a component re-render, whereas setState triggers a re-render.",
+      "Gives two primary use cases: holding references to actual DOM nodes (e.g. for focus/measurements) and storing mutable timer IDs or flags.",
+      "Cautions against reading or writing ref.current during rendering to avoid breaking React concurrent rendering assumptions."
+    ]
+  },
+  {
+    id: "react-17",
+    topic: "React",
+    difficulty: "hard",
+    question: "What problem does code splitting with React.lazy and Suspense solve, and how does it reduce initial bundle size?",
+    rubric: [
+      "Explains that single-page app bundles can grow large, causing slow initial downloads and parse times over slow networks.",
+      "Explains React.lazy dynamically imports component chunks on demand only when they are about to be rendered.",
+      "Explains Suspense wraps lazy components and renders a fallback UI (like a loading spinner) while the JavaScript chunk downloads.",
+      "Mentions route-based code splitting as the most common pattern (e.g., loading admin dashboard chunk only when visiting /admin)."
+    ]
+  },
+  {
+    id: "react-18",
+    topic: "React",
+    difficulty: "medium",
+    question: "When creating a custom hook in React, what naming convention must you follow and what is its primary benefit?",
+    rubric: [
+      "States the custom hook function name must start with the prefix 'use' (e.g., useFetch, useWindowSize).",
+      "Explains the 'use' prefix enables React ESLint linters to automatically enforce the Rules of Hooks within the function.",
+      "Explains custom hooks extract and share stateful logic across multiple components without duplicating lifecycle code.",
+      "Emphasizes each component calling a custom hook receives completely isolated state, not shared global state."
+    ]
+  },
+  {
+    id: "react-19",
+    topic: "React",
+    difficulty: "easy",
+    question: "What are React Fragments, and why are they used instead of wrapping sibling elements in an extra div?",
+    rubric: [
+      "Explains Fragments (<>...</> or <React.Fragment>) allow grouping a list of children without adding extra nodes to the DOM.",
+      "Prevents cluttering the DOM tree with unnecessary wrapper div elements.",
+      "Preserves semantic HTML layouts like table columns or flexbox/grid containers where extra wrappers break CSS rules.",
+      "Notes the explicit <React.Fragment key={id}> syntax is required when mapping arrays that require key props."
+    ]
+  },
+  {
+    id: "react-20",
+    topic: "React",
+    difficulty: "hard",
+    question: "What is the difference between useLayoutEffect and useEffect regarding screen painting?",
+    rubric: [
+      "Explains useEffect runs asynchronously after the render and screen paint have completed, preventing blocking browser rendering.",
+      "Explains useLayoutEffect runs synchronously immediately after DOM mutations but before the browser paints pixels on screen.",
+      "Explains useLayoutEffect is used when reading DOM layout measurements (e.g. element height) and making synchronized DOM updates to prevent visual flickering.",
+      "Warns that heavy computations in useLayoutEffect block visual page painting and cause noticeable UI stutter."
+    ]
+  },
+
+  // ==========================================
+  // Node / Express (15 Questions: node-01 to node-15)
+  // ==========================================
+  {
+    id: "node-01",
+    topic: "Node",
+    difficulty: "medium",
+    question: "Your Express API handles thousands of lightweight requests easily, but whenever one route parses a 50MB JSON file, all other users' requests freeze. What is happening under the hood, and how do you fix it?",
+    rubric: [
+      "Explains that Node.js executes JavaScript on a single thread, and synchronous CPU operations like JSON.parse block the event loop.",
+      "Explains that while the main thread is blocked, incoming I/O events waiting in the event loop queue cannot execute.",
+      "Proposes streaming parsers (e.g., streaming JSON parser) or offloading the heavy CPU task to a Worker Thread or separate background process.",
+      "Recommends validating and rejecting oversized payloads upfront using middleware (e.g., express.json({ limit: ... }))."
+    ]
+  },
+  {
+    id: "node-02",
+    topic: "Node",
+    difficulty: "easy",
+    question: "An asynchronous database query throws an unhandled error inside an Express route handler, and the entire Node process terminates. Why did it crash, and how should async errors be handled?",
+    rubric: [
+      "Explains that an unhandled Promise rejection in Node can cause the process to emit unhandledRejection and terminate.",
+      "Wraps asynchronous operations in try/catch blocks and forwards errors to next(error).",
+      "Configures a centralized Express error-handling middleware with four parameters (err, req, res, next).",
+      "Bonus/context: notes Express 5 forwards rejected Promises automatically, while Express 4 requires explicit next(err) forwarding."
+    ]
+  },
+  {
+    id: "node-03",
+    topic: "Node",
+    difficulty: "medium",
+    question: "What is the difference between fs.readFile and fs.createReadStream when processing a 2GB log file?",
+    rubric: [
+      "Explains fs.readFile attempts to buffer the entire 2GB file into memory at once, which can exceed the Node heap limit and crash the process.",
+      "Explains fs.createReadStream reads the file piece-by-piece in small chunk buffers without loading the whole file into RAM.",
+      "Explains streams allow processing or transforming data sequentially as it arrives.",
+      "Shows piping the readable stream to a writable stream (or response) to keep memory usage low and constant."
+    ]
+  },
+  {
+    id: "node-04",
+    topic: "Node",
+    difficulty: "easy",
+    question: "What is middleware in Express, and why is the order in which you define middleware with app.use critical?",
+    rubric: [
+      "Defines middleware as a function with access to the request object, response object, and the next middleware function.",
+      "Explains middleware executes sequentially in the exact order it is registered with app.use().",
+      "Explains that if a middleware does not send a response and forgets to call next(), the client request hangs indefinitely.",
+      "Notes body-parsing and authentication middleware must be declared before route handlers that depend on parsed bodies or user session data."
+    ]
+  },
+  {
+    id: "node-05",
+    topic: "Node",
+    difficulty: "medium",
+    question: "What is backpressure when piping a fast readable stream into a slow writable stream, and how does Node handle it?",
+    rubric: [
+      "Defines backpressure: the incoming data rate from the readable stream exceeds the processing capacity of the slow writable destination.",
+      "Explains that without backpressure control, unconsumed chunks accumulate in RAM until memory is exhausted.",
+      "Explains the writable stream signals its internal buffer (highWaterMark) is full by returning false on stream.write().",
+      "Shows stream.pipe() or stream.pipeline() automatically pauses the readable source until the writable destination emits a 'drain' event."
+    ]
+  },
+  {
+    id: "node-06",
+    topic: "Node",
+    difficulty: "hard",
+    question: "How do the Timers, Poll, and Check phases of the Node.js event loop differ regarding setTimeout and setImmediate?",
+    rubric: [
+      "Identifies key phases: Timers (evaluates expired setTimeout/setInterval callbacks), Poll (retrieves new I/O events), and Check (runs setImmediate callbacks).",
+      "Explains setImmediate is scheduled to run in the Check phase immediately after the Poll phase completes.",
+      "Explains setTimeout callbacks execute in the Timers phase after their specified delay threshold has elapsed.",
+      "Notes inside an I/O callback cycle, setImmediate will always execute before any setTimeout callback."
+    ]
+  },
+  {
+    id: "node-07",
+    topic: "Node",
+    difficulty: "medium",
+    question: "What is the difference between process.nextTick and Promise.then microtask execution in the Node.js runtime?",
+    rubric: [
+      "Explains both process.nextTick and resolved Promises are microtasks that execute before the event loop advances to the next phase.",
+      "Identifies that the nextTick queue has higher priority and executes before the Promise microtask queue.",
+      "Warns that recursively scheduling process.nextTick starves the event loop, completely blocking I/O and timers.",
+      "Recommends using standard Promises over process.nextTick in application code unless writing custom low-level stream libraries."
+    ]
+  },
+  {
+    id: "node-08",
+    topic: "Node",
+    difficulty: "easy",
+    question: "What does the package-lock.json file do, and why should it always be committed to source control?",
+    rubric: [
+      "Explains package-lock.json records the exact resolved version, dependency tree, and integrity hashes of every installed package.",
+      "Prevents discrepancies where two teammates running npm install get different minor or patch releases specified by caret (^) in package.json.",
+      "Ensures deterministic, reproducible builds across local machines, staging, and production CI/CD pipelines.",
+      "Enables npm ci to install dependencies faster and strictly adhere to the locked tree."
+    ]
+  },
+  {
+    id: "node-09",
+    topic: "Node",
+    difficulty: "medium",
+    question: "What is the purpose of the Node.js cluster module, and how does it take advantage of multi-core servers?",
+    rubric: [
+      "Explains Node.js by default runs on a single CPU core, leaving other processor cores idle on multi-core servers.",
+      "Explains the cluster module forks multiple child worker processes that share the same server port.",
+      "Explains the master process distributes incoming TCP connections among worker processes (typically using Round-Robin).",
+      "Notes worker processes share no memory, requiring IPC, Redis, or external stores for shared session state."
+    ]
+  },
+  {
+    id: "node-10",
+    topic: "Node",
+    difficulty: "easy",
+    question: "Why should you never store sensitive secrets like API keys directly in source code files, and how do you access them using environment variables?",
+    rubric: [
+      "Explains committing secrets to source repositories exposes credentials to unauthorized developers or public leaks.",
+      "Loads environment variables via process.env (often with tools like dotenv in local development).",
+      "Stores sensitive keys in a local .env file that is explicitly added to .gitignore.",
+      "Configures production secrets through the deployment platform environment settings."
+    ]
+  },
+  {
+    id: "node-11",
+    topic: "Node",
+    difficulty: "medium",
+    question: "What is the difference between CommonJS (require) and ES Modules (import) in Node.js?",
+    rubric: [
+      "Explains CommonJS uses require() and module.exports, which loads modules synchronously at runtime.",
+      "Explains ES Modules use import and export, which are parsed and loaded statically at compile/parse time.",
+      "Notes ES Modules enable static analysis, tree-shaking, and top-level await.",
+      "Explains configuration differences: package.json 'type': 'module' or .mjs file extensions enable native ESM in Node."
+    ]
+  },
+  {
+    id: "node-12",
+    topic: "Node",
+    difficulty: "hard",
+    question: "What is a memory leak in a long-running Node.js process, and what are two common code patterns that cause it?",
+    rubric: [
+      "Defines a memory leak: objects in heap memory are no longer needed but remain reachable, preventing garbage collection.",
+      "Identifies pattern 1: uncleaned global event listeners on EventEmitter or DOM objects accumulating callback references.",
+      "Identifies pattern 2: growing unbounded in-memory caches or global arrays without eviction limits or TTLs.",
+      "Explains diagnosing leaks using heap snapshots, Node's --inspect flag, or monitoring process.memoryUsage()."
+    ]
+  },
+  {
+    id: "node-13",
+    topic: "Node",
+    difficulty: "easy",
+    question: "What is the purpose of the helmet middleware package in an Express application?",
+    rubric: [
+      "Explains helmet sets secure HTTP response headers to protect Express apps from common web vulnerabilities.",
+      "Hides the X-Powered-By header so attackers cannot trivially fingerprint the backend as Express.",
+      "Configures headers like Content-Security-Policy, X-Frame-Options (prevents clickjacking), and Strict-Transport-Security.",
+      "Acts as a foundational security best practice that is easy to enable via app.use(helmet())."
+    ]
+  },
+  {
+    id: "node-14",
+    topic: "Node",
+    difficulty: "medium",
+    question: "How do Worker Threads in Node.js differ from child processes created with child_process.fork?",
+    rubric: [
+      "Explains Worker Threads run within the same operating system process, sharing process memory space via SharedArrayBuffer.",
+      "Explains child processes run in separate OS processes with completely isolated memory and higher creation overhead.",
+      "Recommends Worker Threads for CPU-bound JavaScript algorithms (e.g. image processing, cryptography, heavy math).",
+      "Recommends child processes when executing independent shell commands or isolating crashes entirely from the host process."
+    ]
+  },
+  {
+    id: "node-15",
+    topic: "Node",
+    difficulty: "easy",
+    question: "What does the EventEmitter class do in Node.js, and why is it important to remove listeners with emitter.off?",
+    rubric: [
+      "Explains EventEmitter facilitates the observer pattern by allowing objects to emit named events and register listener callbacks.",
+      "Shows registering listeners via emitter.on(event, handler) and triggering events via emitter.emit(event, data).",
+      "Explains failing to remove listeners keeps references to callback closures in memory, causing memory leaks.",
+      "Notes EventEmitter logs a warning when the listener count on a single event exceeds default limits (10 listeners)."
+    ]
+  },
+
+  // ==========================================
+  // System Design (15 Questions: sys-01 to sys-15)
+  // ==========================================
+  {
+    id: "sys-01",
+    topic: "System Design",
+    difficulty: "easy",
+    question: "When designing a URL shortener like TinyURL, how do you convert an auto-incrementing integer ID into a short 7-character string?",
+    rubric: [
+      "Applies Base62 encoding using characters [a-z, A-Z, 0-9].",
+      "Explains Base62 conversion repeatedly takes modulo 62 and division, mapping remainders to the character set.",
+      "Demonstrates capacity: a 7-character Base62 string accommodates 62^7 (over 3.5 trillion) unique URLs.",
+      "Contrasts with cryptographic hashing (MD5/SHA) which requires truncation and collision resolution handling."
+    ]
+  },
+  {
+    id: "sys-02",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "How does the Token Bucket rate limiting algorithm work when protecting an API endpoint from abuse?",
+    rubric: [
+      "Maintains a bucket with a maximum capacity that refills with tokens at a constant rate over time.",
+      "Each incoming request attempts to consume one or more tokens from the bucket.",
+      "If sufficient tokens exist, the request is allowed and tokens are decremented; otherwise the request is rejected with HTTP 429.",
+      "Highlights key advantage: gracefully permits brief traffic bursts up to maximum bucket capacity while enforcing an average rate limit."
+    ]
+  },
+  {
+    id: "sys-03",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "What is the Cache-Aside pattern, and what happens during a cache read miss versus a write update?",
+    rubric: [
+      "On read: application checks cache; on miss, reads from the primary database, populates the cache, and returns data.",
+      "On write: application updates the primary database directly, then invalidates (deletes) the matching key from the cache.",
+      "Explains deleting from cache on write is safer than updating cache directly to prevent race conditions between concurrent writes.",
+      "Points out that a transient failure during cache invalidation can cause stale reads until the key TTL expires."
+    ]
+  },
+  {
+    id: "sys-04",
+    topic: "System Design",
+    difficulty: "hard",
+    question: "What is a cache stampede (thundering herd problem), and how do you prevent it when a hot cache key expires?",
+    rubric: [
+      "Defines cache stampede: a heavily requested cached key expires, causing hundreds of concurrent requests to hit the database simultaneously.",
+      "Identifies that the sudden surge of identical database queries can overwhelm database CPU and connection pools.",
+      "Mitigates using distributed mutex locking: only one request acquires a lock to query the DB and rebuild cache while others wait.",
+      "Acceptable alternative: implements probabilistic early expiration (XFetch) or pre-computing hot keys before expiration."
+    ]
+  },
+  {
+    id: "sys-05",
+    topic: "System Design",
+    difficulty: "easy",
+    question: "What is the difference between horizontal scaling and vertical scaling, and what is the main trade-off of horizontal scaling?",
+    rubric: [
+      "Defines vertical scaling: upgrading existing server hardware (CPU, RAM, disk).",
+      "Defines horizontal scaling: adding more server instances behind a load balancer.",
+      "Explains vertical scaling has strict hardware ceilings and single-point-of-failure risks.",
+      "Identifies trade-offs of horizontal scaling: requires stateless application design, distributed caching, and more complex deployments."
+    ]
+  },
+  {
+    id: "sys-06",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "What is the difference between a forward proxy and a reverse proxy?",
+    rubric: [
+      "Explains a forward proxy sits in front of client devices, masking their identity and routing outbound requests to the internet.",
+      "Explains a reverse proxy sits in front of backend servers, receiving inbound client requests and forwarding them to internal services.",
+      "Gives forward proxy use cases: corporate firewalls, anonymity, content filtering.",
+      "Gives reverse proxy use cases: load balancing, SSL/TLS termination, caching, and protecting private backend IP addresses."
+    ]
+  },
+  {
+    id: "sys-07",
+    topic: "System Design",
+    difficulty: "easy",
+    question: "What is a Content Delivery Network (CDN), and how does it reduce latency for static website assets?",
+    rubric: [
+      "Defines a CDN as a globally distributed network of edge proxy servers (Points of Presence).",
+      "Caches static files (images, JS, CSS, video) close to users geographically.",
+      "Routes client requests to the nearest edge server via Anycast DNS, eliminating long round trips to the origin server.",
+      "Offloads substantial traffic and bandwidth load from the primary origin server."
+    ]
+  },
+  {
+    id: "sys-08",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "When designing an image upload feature, why should clients upload files directly to cloud object storage (like AWS S3) instead of sending the file through your API server?",
+    rubric: [
+      "Explains routing large multi-megabyte file uploads through application API servers consumes CPU, network bandwidth, and memory.",
+      "Explains API server threads can be tied up during slow mobile uploads, reducing capacity for lightweight REST requests.",
+      "Implements presigned URLs: client requests an authorized presigned URL from the backend, then uploads directly to object storage via HTTP PUT.",
+      "Object storage triggers a background event (e.g. S3 event to queue/lambda) to generate thumbnails and notify the database."
+    ]
+  },
+  {
+    id: "sys-09",
+    topic: "System Design",
+    difficulty: "hard",
+    question: "In distributed systems, what does the CAP theorem state about Consistency, Availability, and Partition Tolerance?",
+    rubric: [
+      "Defines Partition Tolerance: system continues functioning despite network packet loss or communication splits between nodes.",
+      "Emphasizes network partitions are inevitable in real-world distributed networks, forcing a choice between C and A during a partition.",
+      "Explains CP choice: prioritizes Consistency by rejecting or delaying requests if node synchronization cannot be guaranteed.",
+      "Explains AP choice: prioritizes Availability by returning immediate responses, accepting that some nodes may return stale data."
+    ]
+  },
+  {
+    id: "sys-10",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "Why would you introduce a message queue like RabbitMQ or Kafka between an order processing service and an email notification service?",
+    rubric: [
+      "Decouples services: order placement succeeds instantly without waiting synchronously for third-party email APIs to respond.",
+      "Provides rate leveling / buffer: absorbs sudden order spikes (e.g., flash sales) and lets worker consumers process emails at a steady pace.",
+      "Improves fault tolerance: if the email service goes down, messages persist safely in the queue until the consumer recovers.",
+      "Enables retry logic and dead-letter queues for handling transient delivery failures without dropping user notifications."
+    ]
+  },
+  {
+    id: "sys-11",
+    topic: "System Design",
+    difficulty: "easy",
+    question: "What is the difference between Round-Robin and Least-Connections load balancing algorithms?",
+    rubric: [
+      "Defines Round-Robin: distributes incoming requests sequentially across available backend servers in circular order.",
+      "Defines Least-Connections: routes incoming requests to the server currently handling the fewest active connections.",
+      "Identifies Round-Robin works best when all requests take roughly equal processing time and servers have equal capacity.",
+      "Identifies Least-Connections is superior when requests have widely varying processing times (e.g. file downloads mixed with fast queries)."
+    ]
+  },
+  {
+    id: "sys-12",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "What is database replication using a primary-replica (master-slave) setup, and how does it improve read throughput?",
+    rubric: [
+      "Explains all data write operations are sent exclusively to the primary node.",
+      "Explains modifications on primary are asynchronously or synchronously replicated to one or more read-only replica nodes.",
+      "Improves read throughput by distributing read traffic across multiple replicas.",
+      "Identifies replication lag: asynchronous replication can result in temporary eventual consistency where replicas lag slightly behind the primary."
+    ]
+  },
+  {
+    id: "sys-13",
+    topic: "System Design",
+    difficulty: "hard",
+    question: "How does consistent hashing minimize key redistribution when scaling a cluster of caching nodes up or down?",
+    rubric: [
+      "Explains traditional hash modulo (hash(key) % N) redistributes almost 100 percent of keys whenever node count N changes, causing total cache misses.",
+      "Maps both servers and keys onto a circular hash ring (0 to 2^32 - 1).",
+      "Assigns each key to the first server encountered moving clockwise along the ring.",
+      "Shows adding or removing a node only redistributes keys located between that node and its predecessor (roughly 1/N keys on average).",
+      "Uses virtual nodes per physical server to ensure uniform, balanced key distribution across servers."
+    ]
+  },
+  {
+    id: "sys-14",
+    topic: "System Design",
+    difficulty: "easy",
+    question: "What is an API gateway in a microservices architecture, and what common cross-cutting concerns does it handle?",
+    rubric: [
+      "Defines an API gateway as a single entry point that accepts all incoming client API requests and routes them to internal microservices.",
+      "Handles centralized authentication and authorization checks before requests reach downstream services.",
+      "Implements rate limiting, SSL termination, and request logging in one place.",
+      "Prevents exposing internal microservice addresses and protocols directly to the public internet."
+    ]
+  },
+  {
+    id: "sys-15",
+    topic: "System Design",
+    difficulty: "medium",
+    question: "What is the difference between symmetric encryption and asymmetric encryption, and how do they work together in HTTPS?",
+    rubric: [
+      "Explains symmetric encryption uses the same shared secret key for encryption and decryption (very fast).",
+      "Explains asymmetric encryption uses a mathematically paired public key for encryption and private key for decryption (slower, solved key exchange).",
+      "Shows how HTTPS combines both: uses asymmetric encryption to safely negotiate a shared session key during the TLS handshake.",
+      "Switches to symmetric encryption using the negotiated session key for all subsequent bulk web traffic to maximize throughput."
+    ]
+  },
+
+  // ==========================================
+  // JavaScript Fundamentals (10 Questions: js-01 to js-10)
+  // ==========================================
+  {
+    id: "js-01",
+    topic: "JavaScript",
+    difficulty: "easy",
+    question: "What is the difference between null and undefined in JavaScript?",
+    rubric: [
+      "Explains undefined means a variable has been declared but has not yet been assigned a value.",
+      "Explains null is an intentional assignment representing the explicit absence of any object or value.",
+      "Points out typeof undefined is 'undefined', whereas typeof null is historically 'object' in JavaScript.",
+      "Notes loose equality null == undefined evaluates to true, while strict equality null === undefined evaluates to false."
+    ]
+  },
+  {
+    id: "js-02",
+    topic: "JavaScript",
+    difficulty: "medium",
+    question: "What is a closure in JavaScript, and what is one practical use case for it?",
+    rubric: [
+      "Defines closure: a function retains access to its lexical scope variables even when executed outside that scope.",
+      "Explains that inner functions hold a reference to outer function variables even after the outer function has returned.",
+      "Gives practical use case 1: creating private variables or encapsulation (data hiding).",
+      "Gives practical use case 2: function factories, partial application, or debounce/throttle functions."
+    ]
+  },
+  {
+    id: "js-03",
+    topic: "JavaScript",
+    difficulty: "easy",
+    question: "What is the difference between loose equality (==) and strict equality (===) in JavaScript?",
+    rubric: [
+      "Explains loose equality (==) performs type coercion to convert operands to a common type before comparing.",
+      "Explains strict equality (===) checks both value and type without performing type coercion.",
+      "Shows an example: '5' == 5 is true, while '5' === 5 is false.",
+      "Recommends always using strict equality (===) to prevent unexpected implicit coercion bugs."
+    ]
+  },
+  {
+    id: "js-04",
+    topic: "JavaScript",
+    difficulty: "medium",
+    question: "How does the 'this' keyword determine its value in a regular function versus an arrow function?",
+    rubric: [
+      "Explains that in a regular function, 'this' is dynamically determined at call time by how the function is invoked (e.g., method of object, standalone call, or constructor).",
+      "Explains arrow functions do not have their own 'this'; they inherit 'this' lexically from their enclosing scope at declaration time.",
+      "Explains call(), apply(), and bind() can explicitly override 'this' in regular functions, but have no effect on arrow functions.",
+      "Cautions against using arrow functions for object methods that need to access sibling object properties via this."
+    ]
+  },
+  {
+    id: "js-05",
+    topic: "JavaScript",
+    difficulty: "easy",
+    question: "What is the difference between let, const, and var regarding scope and hoisting?",
+    rubric: [
+      "Explains var is function-scoped (or globally scoped), whereas let and const are block-scoped ({ ... }).",
+      "Explains var declarations are hoisted and initialized to undefined.",
+      "Explains let and const declarations are hoisted but remain uninitialized in the Temporal Dead Zone (TDZ) until evaluation.",
+      "Notes const prevents reassignment of the variable identifier, though object properties can still be mutated."
+    ]
+  },
+  {
+    id: "js-06",
+    topic: "JavaScript",
+    difficulty: "medium",
+    question: "What is event delegation in the browser DOM, and why is it more efficient than attaching event listeners to every list item?",
+    rubric: [
+      "Defines event delegation: attaching a single event listener to a common parent element rather than many individual children.",
+      "Leverages event bubbling: events triggered on child nodes propagate upward through parent DOM ancestors.",
+      "Uses event.target inside the parent handler to identify the specific child element that triggered the event.",
+      "Improves memory efficiency and automatically handles newly added dynamic child elements without re-attaching listeners."
+    ]
+  },
+  {
+    id: "js-07",
+    topic: "JavaScript",
+    difficulty: "medium",
+    question: "What is the difference between shallow copy and deep copy when duplicating an object containing nested objects?",
+    rubric: [
+      "Explains shallow copy (Object.assign or spread {...obj}) copies top-level properties but copies references to nested objects.",
+      "Points out modifying a nested object in a shallow copy inadvertently mutates the original object.",
+      "Explains deep copy duplicates all levels recursively, creating completely independent nested copies.",
+      "Mentions structuredClone() as the modern standard for deep copying, contrasting with JSON.parse(JSON.stringify()) limitations (loses functions, undefined, Dates)."
+    ]
+  },
+  {
+    id: "js-08",
+    topic: "JavaScript",
+    difficulty: "hard",
+    question: "How does prototype inheritance work in JavaScript, and what happens when you access a property that does not exist on the immediate object?",
+    rubric: [
+      "Explains every JavaScript object has an internal link to another object called its prototype (__proto__ or Object.getPrototypeOf).",
+      "When a property is accessed, the JavaScript engine looks on the object itself first.",
+      "If not found, it traverses upward along the prototype chain inspecting each prototype object.",
+      "Returns undefined only after reaching the end of the prototype chain (Object.prototype's prototype is null)."
+    ]
+  },
+  {
+    id: "js-09",
+    topic: "JavaScript",
+    difficulty: "easy",
+    question: "What does Promise.all() do when handling multiple asynchronous operations, and what happens if one Promise rejects?",
+    rubric: [
+      "Takes an iterable of Promises and returns a single Promise that resolves to an array of all resolved values.",
+      "Executes the operations concurrently rather than sequentially.",
+      "Implements fast-fail behavior: if any single Promise rejects, Promise.all immediately rejects with that error, discarding other results.",
+      "Acceptable alternative: mentions Promise.allSettled() when you need all operations to complete regardless of individual rejections."
+    ]
+  },
+  {
+    id: "js-10",
+    topic: "JavaScript",
+    difficulty: "medium",
+    question: "What is the difference between debouncing and throttling when optimizing high-frequency events like window resizing or typing in search?",
+    rubric: [
+      "Defines debounce: delays function execution until a specified delay has elapsed since the last time the event was triggered.",
+      "Defines throttle: guarantees function execution at most once per specified time interval, regardless of event frequency.",
+      "Recommends debounce for search autocomplete inputs (waits until user finishes typing).",
+      "Recommends throttle for scroll position listeners or window resizing (updates UI smoothly at fixed intervals)."
+    ]
+  },
+
+  // ==========================================
+  // HR / Behavioral (20 Questions: hr-01 to hr-20)
+  // ==========================================
+  {
+    id: "hr-01",
+    topic: "HR",
+    difficulty: "easy",
+    question: "During a hackathon or class project, a teammate wanted to use a brand-new framework they had never used before, but you had a tight 24-hour deadline. How did you handle that disagreement?",
+    rubric: [
+      "Structure: Clearly sets the context and conflicting priorities (desire to learn vs. project delivery risk).",
+      "Action: Focuses the conversation on objective constraints (documentation, team familiarity, deadline) rather than personal preference.",
+      "Outcome: Explains the agreed compromise (e.g. timeboxed 1-hour prototype, or using proven tools for core features).",
+      "Learning: Shows supportive communication and supports the team decision once made."
+    ]
+  },
+  {
+    id: "hr-02",
+    topic: "HR",
+    difficulty: "easy",
+    question: "You're working on an internship task or semester project and realize two days before the demo that you won't finish your assigned feature in time. What exact steps do you take?",
+    rubric: [
+      "Structure: Communicates the situation and timeline constraints clearly.",
+      "Action: Proactively alerts mentor/teammates early instead of waiting for the deadline.",
+      "Action: Distinguishes must-haves from nice-to-haves and proposes a scoped-down working version.",
+      "Outcome and Learning: Reflects on estimation improvements (e.g. smaller milestones, earlier progress checks)."
+    ]
+  },
+  {
+    id: "hr-03",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Tell me about a time you received critical code review feedback that asked you to rewrite a large portion of your code. How did you respond?",
+    rubric: [
+      "Structure: Describes the context of the pull request and the specific nature of the critical feedback.",
+      "Action: Listens constructively without taking technical feedback personally.",
+      "Action: Seeks clarification on architectural reasoning and collaborates to find an agreed approach.",
+      "Outcome: Completes the refactor successfully and adopts the reviewer's feedback as an ongoing standard."
+    ]
+  },
+  {
+    id: "hr-04",
+    topic: "HR",
+    difficulty: "easy",
+    question: "Describe a project where you had to quickly learn a programming language or framework you had never used before. How did you approach learning it?",
+    rubric: [
+      "Structure: Identifies the project requirements and timeline constraint.",
+      "Action: Outlines a structured learning strategy (e.g., official documentation, starter tutorials, building mini-prototypes).",
+      "Action: Validates assumptions early by implementing a small end-to-end slice before full feature work.",
+      "Outcome: Successfully delivered the project on time and built lasting competence in the new tool."
+    ]
+  },
+  {
+    id: "hr-05",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Tell me about a time a bug you wrote made it past testing into a demo or production environment. How did you handle the situation?",
+    rubric: [
+      "Ownership: Takes clear personal responsibility without blaming QA, tools, or teammates.",
+      "Action: Focuses immediately on mitigation (reverting, hotfixing, notifying users) before detailed debugging.",
+      "Action: Investigates the root cause thoroughly and explains why initial testing missed it.",
+      "Learning: Institutes permanent preventive measures (e.g., automated regression test, edge case validation)."
+    ]
+  },
+  {
+    id: "hr-06",
+    topic: "HR",
+    difficulty: "easy",
+    question: "Describe a situation where a teammate was not contributing their agreed share of work to a group project. How did you address it?",
+    rubric: [
+      "Structure: Sets the context and effect of the delay on team progress.",
+      "Communication: Approaches the teammate privately and with empathy to understand potential blockers or personal challenges.",
+      "Action: Re-evaluates task distribution, breaking work into clearer, smaller ownership chunks.",
+      "Outcome: Keeps the project on schedule while maintaining a constructive team dynamic."
+    ]
+  },
+  {
+    id: "hr-07",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Can you tell me about a time you had to balance competing priorities, such as exam deadlines alongside an internship or major software project?",
+    rubric: [
+      "Structure: Clarifies the overlapping demands and hard time limits.",
+      "Action: Applies a systematic prioritization framework (e.g., distinguishing urgent from high-impact tasks).",
+      "Communication: Manages expectations proactively with stakeholders on both sides.",
+      "Outcome: Delivered commitments on time without compromising work quality or burning out."
+    ]
+  },
+  {
+    id: "hr-08",
+    topic: "HR",
+    difficulty: "easy",
+    question: "Tell me about a technical project you built that you are particularly proud of. What role did you play, and what made it stand out to you?",
+    rubric: [
+      "Structure: Explains the problem the project solved and who the intended users were.",
+      "Action: Clearly delineates personal technical contributions versus team or library contributions.",
+      "Action: Highlights a key engineering challenge or trade-off encountered during implementation.",
+      "Outcome: Shares measurable outcomes, user feedback, or key engineering lessons learned."
+    ]
+  },
+  {
+    id: "hr-09",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Tell me about a time you noticed an inefficiency or flaw in a team's workflow or codebase that no one asked you to fix. What did you do?",
+    rubric: [
+      "Initiative: Identifies an unassigned problem (e.g., repetitive manual deployment, slow test suite, lack of documentation).",
+      "Action: Investigates and builds a lightweight proof of concept without disrupting existing team priorities.",
+      "Communication: Presents the proposed improvement with tangible benefits to teammates.",
+      "Outcome: Adoption by the team resulted in saved time or reduced developer errors."
+    ]
+  },
+  {
+    id: "hr-10",
+    topic: "HR",
+    difficulty: "easy",
+    question: "How do you explain a complex technical bug or concept to a non-technical teammate or project stakeholder?",
+    rubric: [
+      "Communication: Avoids unnecessary jargon, acronyms, and internal implementation details.",
+      "Action: Uses clear analogies, visual diagrams, or real-world user impacts to bridge understanding.",
+      "Action: Checks for understanding actively through open-ended questions.",
+      "Outcome: Successfully aligned on priorities or helped the stakeholder make an informed decision."
+    ]
+  },
+  {
+    id: "hr-11",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Tell me about a time an unexpected requirement change was introduced right in the middle of your development sprint. How did you adapt?",
+    rubric: [
+      "Structure: Details the initial scope and what changed mid-stream.",
+      "Action: Assesses the technical impact on architecture and timeline calmly rather than reacting with frustration.",
+      "Communication: Discusses trade-offs with the lead or product owner, highlighting what existing work can be preserved.",
+      "Outcome: Adjusted delivery plan smoothly while keeping code clean."
+    ]
+  },
+  {
+    id: "hr-12",
+    topic: "HR",
+    difficulty: "easy",
+    question: "Tell me about a time you were assigned a task with vague or ambiguous requirements. What steps did you take before writing code?",
+    rubric: [
+      "Action: Recognizes ambiguity early rather than making unverified assumptions and coding the wrong thing.",
+      "Action: Drafts clarifying questions, simple wireframes, or API mockups to confirm intent.",
+      "Communication: Reaches out to the task owner or mentor to validate edge cases and success criteria.",
+      "Outcome: Delivered the correct solution on the first iteration without rework."
+    ]
+  },
+  {
+    id: "hr-13",
+    topic: "HR",
+    difficulty: "hard",
+    question: "Describe a situation where you had to make a tough trade-off between writing perfect, clean code versus delivering a working feature quickly. How did you decide?",
+    rubric: [
+      "Structure: Explains the business or project pressure that demanded rapid delivery.",
+      "Action: Evaluates the trade-off pragmatically: delivers a working, well-tested core while intentionally accepting technical debt.",
+      "Action: Documents the debt clearly with code comments or tracking tickets for future refactoring.",
+      "Learning: Understands that business utility sometimes supersedes theoretical code purity."
+    ]
+  },
+  {
+    id: "hr-14",
+    topic: "HR",
+    difficulty: "easy",
+    question: "Tell me about a time you helped a peer, junior student, or teammate who was struggling with a challenging coding problem.",
+    rubric: [
+      "Empathy: Listens attentively to understand where the peer was stuck without being condescending.",
+      "Action: Guides the peer through debugging methodologies and conceptual questions instead of writing code for them.",
+      "Action: Encourages independent problem-solving and validates their progress.",
+      "Outcome: The teammate gained confidence and resolved the blocker effectively."
+    ]
+  },
+  {
+    id: "hr-15",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Tell me about a time you worked on a project where the team experienced a major setback, such as corrupted data or an API deprecation. How did you keep moving forward?",
+    rubric: [
+      "Resilience: Stays composed and solutions-oriented when initial work is lost or blocked.",
+      "Action: Gathers the team to brainstorm alternative paths or fallbacks.",
+      "Action: Takes ownership of a key recovery workstream.",
+      "Outcome: Delivered a viable solution and implemented better safeguards (backups, version pinning)."
+    ]
+  },
+  {
+    id: "hr-16",
+    topic: "HR",
+    difficulty: "easy",
+    question: "How do you stay up-to-date with emerging software engineering trends, tools, and best practices?",
+    rubric: [
+      "Action: Names specific, structured resources (engineering blogs, open source repositories, podcasts, tech books).",
+      "Action: Experiments hands-on with new tools by building mini side projects rather than just reading articles.",
+      "Discernment: Evaluates whether a new technology genuinely solves a problem before recommending it.",
+      "Outcome: Successfully applied a learned concept or optimization to a real project."
+    ]
+  },
+  {
+    id: "hr-17",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Tell me about a time you gave constructive feedback to a peer on their code or project contribution. How did you deliver it?",
+    rubric: [
+      "Communication: Focuses feedback entirely on the code and objective standards, not personal traits.",
+      "Action: Highlights positive aspects alongside specific suggestions for improvement.",
+      "Action: Explains the reasoning behind suggestions (e.g. edge case failure, maintainability) rather than just saying 'change this'.",
+      "Outcome: The peer accepted the suggestions gladly and the relationship remained collaborative."
+    ]
+  },
+  {
+    id: "hr-18",
+    topic: "HR",
+    difficulty: "hard",
+    question: "Tell me about an instance where you strongly believed in an architectural approach, but the majority of the team voted for an alternative. How did you proceed?",
+    rubric: [
+      "Advocacy: Presented reasoning with facts, prototypes, or benchmarks respectfully during discussion.",
+      "Ownership: Respects the team's consensus once the decision is finalized without lingering resentment.",
+      "Action: Fully commits to implementing the chosen alternative with the same effort as if it were personal preference.",
+      "Learning: Reflects on whether the chosen solution proved effective in practice."
+    ]
+  },
+  {
+    id: "hr-19",
+    topic: "HR",
+    difficulty: "easy",
+    question: "Tell me about a time you had to debug a difficult software issue that took hours or days to solve. What was your process?",
+    rubric: [
+      "Structure: Explains the perplexing bug behavior and why initial attempts failed.",
+      "Methodology: Shows systematic deduction (isolating components, binary searching git commits, logging, reproducing with minimal test case).",
+      "Action: Avoided random guessing and formulated testable hypotheses.",
+      "Outcome: Identified the root cause, implemented a clean fix, and added a regression test."
+    ]
+  },
+  {
+    id: "hr-20",
+    topic: "HR",
+    difficulty: "medium",
+    question: "Where do you hope to grow the most as a software engineer over your first year on the job?",
+    rubric: [
+      "Self-awareness: Identifies specific areas for technical growth (e.g. large-scale architecture, production debugging, CI/CD).",
+      "Collaboration: Emphasizes becoming a reliable teammate who communicates blockers clearly and writes maintainable code.",
+      "Mindset: Shows enthusiasm for mentorship, learning company domain practices, and taking on challenging tasks.",
+      "Action: Outlines concrete steps to measure personal progress across the year."
+    ]
+  }
+];
+
+// Write to questionBank.json
+const outputPath = path.join(rootDir, 'src', 'data', 'questionBank.json');
+fs.writeFileSync(outputPath, JSON.stringify(questions, null, 2), 'utf8');
+console.log(`Successfully generated ${questions.length} questions in ${outputPath}`);

@@ -1,12 +1,28 @@
-﻿
+
 import React from 'react';
 import Logo from './Logo';
+import UserNavWidget from './UserNavWidget';
+import { useAuth } from '../src/context/AuthContext';
 
 interface HomeScreenProps {
   onStart: () => void;
+  onOpenAuth: () => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onStart }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onStart, onOpenAuth }) => {
+  const { currentUser, isFirebaseConfigured } = useAuth();
+
+  const handleStartPractice = () => {
+    // If Firebase is configured, require user to be logged in and email-verified
+    if (isFirebaseConfigured) {
+      if (!currentUser || !currentUser.emailVerified) {
+        onOpenAuth();
+        return;
+      }
+    }
+    onStart();
+  };
+
   return (
     <div className="relative min-h-screen overflow-x-hidden" style={{ background: 'transparent' }}>
 
@@ -25,11 +41,46 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStart }) => {
             <Logo size="md" className="items-start" />
             <p className="mt-1.5 text-[10px] uppercase tracking-[0.25em] text-slate-500">Interview Performance Platform</p>
           </div>
-          <div className="chip">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            Voice + AI Coaching
+          <div className="flex items-center space-x-3">
+            <div className="chip hidden sm:flex">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              Voice + AI Coaching
+            </div>
+            <UserNavWidget onOpenAuth={onOpenAuth} />
           </div>
         </header>
+
+        {/* Verification banner if signed in with unverified email */}
+        {currentUser && !currentUser.emailVerified && (
+          <div className="mb-8 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl shadow-amber-950/20 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300 shrink-0">
+                <svg className="w-5 h-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <p className="text-xs font-black uppercase tracking-wider text-amber-300">
+                    Email Verification Required
+                  </p>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200 font-semibold border border-amber-400/30">
+                    Action Needed
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                  A verification link was sent to <span className="font-mono text-white font-semibold">{currentUser.email}</span>. Please click the link to unlock interview simulations.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onOpenAuth}
+              className="shrink-0 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-amber-500/20"
+            >
+              Verify Now
+            </button>
+          </div>
+        )}
 
         {/* - Hero - */}
         <section className="relative mb-6">
@@ -65,7 +116,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStart }) => {
               </div>
 
               <button
-                onClick={onStart}
+                onClick={handleStartPractice}
                 className="btn-glow mt-9 inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 px-9 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_8px_32px_rgba(59,130,246,0.4)] hover:shadow-[0_12px_48px_rgba(59,130,246,0.55)] hover:-translate-y-0.5 transition-all duration-200"
               >
                 Start Practice
@@ -264,10 +315,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStart }) => {
             <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-blue-400 mb-4 relative z-10">Ready?</p>
             <h3 className="text-3xl md:text-4xl font-bold text-white mb-4 relative z-10">Start your first session now.</h3>
             <p className="text-slate-400 text-sm max-w-lg mx-auto mb-8 leading-relaxed relative z-10">
-              No signup required. Pick a mode, answer questions, and get AI coaching - in under 5 minutes.
+              Sign in to track your confidence metrics, analyze pressure trends, and save your performance history.
             </p>
             <button
-              onClick={onStart}
+              onClick={handleStartPractice}
               className="btn-glow relative z-10 inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-10 py-4 text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_8px_40px_rgba(59,130,246,0.35)] hover:shadow-[0_12px_56px_rgba(59,130,246,0.50)] hover:-translate-y-0.5 transition-all duration-200"
             >
               Begin Practice
