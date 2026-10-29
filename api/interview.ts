@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { validateOrigin, getCorsHeaders, getClientIp, parseAndValidateBody } from './_lib/security.ts';
-import { interviewIpLimiter, interviewGlobalLimiter } from './_lib/rateLimit.ts';
+import { interviewIpLimiter, interviewInstanceLimiter, interviewGlobalLimiter } from './_lib/rateLimit.ts';
 import {
   generateQuestionsServer,
   generateNextQuestionServer,

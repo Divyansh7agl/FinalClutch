@@ -463,7 +463,7 @@ Analyze the candidate's responses for relevance, criteria coverage, and delivery
 
   // Fallback retry loop across models: if a model fails to produce a valid SCORES block,
   // retry on the next model in the chain before falling back to local heuristic.
-  const modelsToTry = modelOverride ? [modelOverride] : FALLBACK_MODELS;
+  const modelsToTry = modelOverride ? [modelOverride] : GROQ_MODELS;
 
   for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
     const model = modelsToTry[attempt];
