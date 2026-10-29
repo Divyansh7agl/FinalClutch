@@ -5,7 +5,7 @@ import { QUESTIONS, FILLER_WORDS, SCORING } from '../constants';
 import PressureMeter from './PressureMeter';
 import Logo from './Logo';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { generateAIQuestions, generateNextAIQuestion, generateFollowupChallenge } from '../src/utils/aiFeedback';
+import { generateAIQuestions, generateNextAIQuestion, generateFollowupChallenge, getLastApiError } from '../src/utils/aiFeedback';
 import CameraFeed from './CameraFeed';
 import { speakWithGroq, stopGroqTTS } from '../src/utils/groqTTS';
 
@@ -181,8 +181,11 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         const difficulty = customContext?.difficulty || 'medium';
 
         if (mode === 'ai-interview' || mode === 'custom') {
-          // Both AI and Custom modes start with one generated question and continue conversationally
           const firstQuestion = await generateNextAIQuestion([], combinedContext, 'groq', difficulty);
+          const apiErr = getLastApiError();
+          if (apiErr) {
+            console.warn(`[ClutchAI] AI Interview question generation fell back to offline mode (${apiErr.message}, status ${apiErr.status}, code ${apiErr.reasonCode}).`);
+          }
           qs = [{ id: `ai-start-${Date.now()}`, text: firstQuestion }];
         } else if (mode === 'followup') {
           const firstQuestion = await generateFollowupChallenge('', '', difficulty);

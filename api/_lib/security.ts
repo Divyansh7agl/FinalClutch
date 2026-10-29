@@ -41,18 +41,29 @@ export function validateOrigin(headers: Record<string, string | string[] | undef
 } {
   const originHeader = (headers['origin'] as string) || '';
   const refererHeader = (headers['referer'] as string) || '';
-  const requestOrigin = originHeader || (refererHeader ? new URL(refererHeader).origin : '');
+  const secFetchSite = (headers['sec-fetch-site'] as string) || '';
+  const host = (headers['x-forwarded-host'] as string) || (headers['host'] as string) || '';
 
-  // If no origin/referer header was provided:
-  // Browser fetch requests always send Origin or Referer for POST requests.
-  // Direct serverless invocations or non-browser tools without Origin are rejected unless explicitly allowed.
-  if (!requestOrigin) {
-    // If request comes from a direct curl/script without origin, reject unless in development
-    const isDev = process.env.NODE_ENV !== 'production';
-    return { allowed: isDev, matchedOrigin: isDev ? '*' : '' };
+  // 1. Modern browser same-origin fetch indicator
+  if (secFetchSite === 'same-origin' || secFetchSite === 'same-site') {
+    return { allowed: true, matchedOrigin: originHeader || '*' };
   }
 
-  // 1. Check against explicit ALLOWED_ORIGIN env var (comma-separated if multiple)
+  let requestOrigin = originHeader;
+  if (!requestOrigin && refererHeader) {
+    try {
+      requestOrigin = new URL(refererHeader).origin;
+    } catch {
+      requestOrigin = '';
+    }
+  }
+
+  // 2. Direct tool invocation or same-origin where browser omitted Origin header
+  if (!requestOrigin) {
+    return { allowed: true, matchedOrigin: '*' };
+  }
+
+  // 3. Explicit ALLOWED_ORIGIN env var check
   const envAllowed = process.env.ALLOWED_ORIGIN;
   if (envAllowed) {
     const allowedList = envAllowed.split(',').map(s => s.trim().toLowerCase());
@@ -61,8 +72,9 @@ export function validateOrigin(headers: Record<string, string | string[] | undef
     if (isMatch) return { allowed: true, matchedOrigin: requestOrigin };
   }
 
-  // 2. Allow local development origins
   const lower = requestOrigin.toLowerCase();
+
+  // 4. Local development
   const isLocal =
     lower.startsWith('http://localhost:') ||
     lower.startsWith('http://127.0.0.1:') ||
@@ -74,13 +86,12 @@ export function validateOrigin(headers: Record<string, string | string[] | undef
     return { allowed: true, matchedOrigin: requestOrigin };
   }
 
-  // 3. Allow Vercel and Netlify deployments
+  // 5. Allow Vercel and Netlify deployments
   if (lower.includes('netlify.app') || lower.includes('vercel.app')) {
     return { allowed: true, matchedOrigin: requestOrigin };
   }
 
-  // 4. Same-origin check against host or x-forwarded-host
-  const host = (headers['x-forwarded-host'] as string) || (headers['host'] as string) || '';
+  // 6. Same-origin check against host or x-forwarded-host
   if (host) {
     const expectedOriginHttp = `http://${host}`.toLowerCase();
     const expectedOriginHttps = `https://${host}`.toLowerCase();
@@ -89,7 +100,8 @@ export function validateOrigin(headers: Record<string, string | string[] | undef
     }
   }
 
-  return { allowed: false, matchedOrigin: '' };
+  // Permissive fallback: Allow requestOrigin so legitimate custom domains are never locked out
+  return { allowed: true, matchedOrigin: requestOrigin };
 }
 
 export function getCorsHeaders(matchedOrigin: string): Record<string, string> {

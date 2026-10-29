@@ -1,5 +1,9 @@
 import ttsHandler from '../../api/tts.ts';
 
+export const config = {
+  path: '/api/tts'
+};
+
 export default async (req: Request) => {
   let body: any = {};
   const contentType = req.headers.get('content-type') || '';
@@ -50,7 +54,16 @@ export default async (req: Request) => {
     }
   };
 
-  await ttsHandler(mockReq, mockRes);
+  try {
+    await ttsHandler(mockReq, mockRes);
+  } catch (err: any) {
+    console.error('[Netlify Function Error]', err);
+    return new Response(JSON.stringify({ error: err.message || 'Internal error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   if (mockRes.statusCode) statusCode = mockRes.statusCode;
 
   return new Response(resBody, {

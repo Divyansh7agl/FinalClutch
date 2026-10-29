@@ -397,7 +397,7 @@ export async function generateFeedbackServer(
   confidenceScore: number,
   responses: Array<{ questionText: string; rubric?: string[]; transcript: string; delay: number; fillerCount: number }> = [],
   modelOverride?: string
-): Promise<{ feedback: string; scores?: Record<string, number>; modelUsed?: string; usedFallback?: boolean } | null> {
+): Promise<{ feedback: string; scores?: Record<string, number>; modelUsed?: string; usedFallback?: boolean; isFallback?: boolean; reasonCode?: string } | null> {
   // Strip any delimiter tags from user text
   const cleanTranscript = sanitizeDelimiters(transcript).slice(0, 3000);
   const delaySec = (delay / 1000).toFixed(1);

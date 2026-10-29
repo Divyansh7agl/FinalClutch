@@ -115,6 +115,12 @@ function buildLocalFeedback(transcript, delay, fillerCount, confidenceScore) {
  * Helper to call the serverless /api/interview endpoint.
  * Returns null if offline or on network failure.
  */
+export let lastApiError = null;
+
+export function getLastApiError() {
+  return lastApiError;
+}
+
 async function callInterviewApi(action, payload) {
   try {
     const response = await fetch('/api/interview', {
@@ -124,13 +130,27 @@ async function callInterviewApi(action, payload) {
     });
 
     if (!response.ok) {
-      console.warn(`[Interview API] /api/interview responded with HTTP ${response.status}`);
+      const errText = await response.text().catch(() => '');
+      let parsedErr = null;
+      try { parsedErr = JSON.parse(errText); } catch {}
+      lastApiError = {
+        status: response.status,
+        message: parsedErr?.error || errText || `HTTP ${response.status}`,
+        reasonCode: parsedErr?.reasonCode || `ERR_HTTP_${response.status}`
+      };
+      console.error(`[Interview API Error] /api/interview responded with HTTP ${response.status}:`, errText);
       return null;
     }
 
+    lastApiError = null;
     return await response.json();
   } catch (err) {
-    console.warn('[Interview API] Network error communicating with /api/interview:', err);
+    lastApiError = {
+      status: 0,
+      message: err.message || 'Network error',
+      reasonCode: 'ERR_NETWORK'
+    };
+    console.error('[Interview API Network Error] Failed communicating with /api/interview:', err);
     return null;
   }
 }

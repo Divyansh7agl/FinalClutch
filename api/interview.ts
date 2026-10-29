@@ -19,6 +19,29 @@ interface VercelResponse extends ServerResponse {
 
 const MAX_INTERVIEW_BODY_BYTES = 65536; // 64 KB
 
+async function resolveRequestBody(req: VercelRequest): Promise<any> {
+  if (req.body !== undefined && req.body !== null && req.body !== '') {
+    if (typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+      return req.body;
+    }
+    if (typeof req.body === 'string' && req.body.trim().length > 0) {
+      return req.body;
+    }
+  }
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (chunk) => { data += chunk; });
+    req.on('end', () => {
+      try {
+        resolve(data ? JSON.parse(data) : (req.body || {}));
+      } catch {
+        resolve(data || req.body || {});
+      }
+    });
+    req.on('error', () => resolve(req.body || {}));
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 1. Origin & CORS check
   const originCheck = validateOrigin(req.headers);
@@ -76,7 +99,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // 4. Request Body Size Enforcement (64 KB)
-  const parseResult = parseAndValidateBody(req.body, req.headers, MAX_INTERVIEW_BODY_BYTES);
+  const rawBody = await resolveRequestBody(req);
+  const parseResult = parseAndValidateBody(rawBody, req.headers, MAX_INTERVIEW_BODY_BYTES);
   if (!parseResult.ok) {
     return sendJson(parseResult.status || 400, {
       error: parseResult.error,
