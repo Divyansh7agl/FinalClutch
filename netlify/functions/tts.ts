@@ -1,4 +1,4 @@
-import ttsHandler from '../../api/tts.ts';
+import ttsHandler from '../../api/tts.js';
 
 export const config = {
   path: '/api/tts'

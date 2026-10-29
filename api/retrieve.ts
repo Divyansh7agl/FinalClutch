@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { validateOrigin, getCorsHeaders, getClientIp, parseAndValidateBody } from './_lib/security.ts';
-import { retrieveIpLimiter } from './_lib/rateLimit.ts';
-import { getRelevantQuestions, lookupRubric } from './_lib/retrieval.ts';
+import { validateOrigin, getCorsHeaders, getClientIp, parseAndValidateBody } from './_lib/security.js';
+import { retrieveIpLimiter } from './_lib/rateLimit.js';
+import { getRelevantQuestions, lookupRubric } from './_lib/retrieval.js';
 
 interface VercelRequest extends IncomingMessage {
   body?: any;

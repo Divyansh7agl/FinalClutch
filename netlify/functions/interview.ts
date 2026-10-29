@@ -1,4 +1,4 @@
-import interviewHandler from '../../api/interview.ts';
+import interviewHandler from '../../api/interview.js';
 
 export const config = {
   path: '/api/interview'

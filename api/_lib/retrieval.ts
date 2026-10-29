@@ -1,9 +1,46 @@
-import {
-  GEMINI_EMBEDDING_MODEL,
-  EMBEDDING_DIMENSION,
-  EMBEDDING_TASK_QUERY
-} from '../../src/constants/embeddingConfig.js';
-import questionBankRaw from '../../src/data/questionBankEmbedded.json' with { type: 'json' };
+export const GEMINI_EMBEDDING_MODEL = 'models/gemini-embedding-001';
+export const EMBEDDING_DIMENSION = 768;
+export const EMBEDDING_TASK_QUERY = 'RETRIEVAL_QUERY';
+export const EMBEDDING_TASK_DOCUMENT = 'RETRIEVAL_DOCUMENT';
+
+import { createRequire } from 'node:module';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Load the embedded question bank JSON with multi-path resolution for serverless runtimes
+let questionBankRaw: any = [];
+try {
+  const require = createRequire(import.meta.url);
+  questionBankRaw = require('../../src/data/questionBankEmbedded.json');
+} catch {
+  try {
+    const candidatePaths = [
+      resolve(process.cwd(), 'src/data/questionBankEmbedded.json'),
+      resolve(process.cwd(), 'data/questionBankEmbedded.json'),
+      resolve(process.cwd(), 'questionBankEmbedded.json')
+    ];
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      candidatePaths.push(
+        resolve(__dirname, '../../src/data/questionBankEmbedded.json'),
+        resolve(__dirname, '../src/data/questionBankEmbedded.json'),
+        resolve(__dirname, './questionBankEmbedded.json')
+      );
+    } catch {}
+
+    for (const p of candidatePaths) {
+      if (existsSync(p)) {
+        questionBankRaw = JSON.parse(readFileSync(p, 'utf8'));
+        break;
+      }
+    }
+  } catch (e2) {
+    console.error('[Retrieval] Failed to load questionBankEmbedded.json:', e2);
+    questionBankRaw = [];
+  }
+}
 
 export interface EmbeddedBankItem {
   id: string;

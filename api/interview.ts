@@ -1,12 +1,12 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { validateOrigin, getCorsHeaders, getClientIp, parseAndValidateBody } from './_lib/security.ts';
-import { interviewIpLimiter, interviewInstanceLimiter, interviewGlobalLimiter } from './_lib/rateLimit.ts';
+import { validateOrigin, getCorsHeaders, getClientIp, parseAndValidateBody } from './_lib/security.js';
+import { interviewIpLimiter, interviewInstanceLimiter, interviewGlobalLimiter } from './_lib/rateLimit.js';
 import {
   generateQuestionsServer,
   generateNextQuestionServer,
   generateFollowupChallengeServer,
   generateFeedbackServer
-} from './_lib/llm.ts';
+} from './_lib/llm.js';
 
 interface VercelRequest extends IncomingMessage {
   body?: any;

@@ -1,4 +1,4 @@
-import retrieveHandler from '../../api/retrieve.ts';
+import retrieveHandler from '../../api/retrieve.js';
 
 export const config = {
   path: '/api/retrieve'

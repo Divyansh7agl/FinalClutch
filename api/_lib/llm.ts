@@ -3,8 +3,8 @@
  * fallback model cascading, delimiter stripping, and score clamping.
  */
 
-import { sanitizeDelimiters } from './security.ts';
-import { getLoadedBank } from './retrieval.ts';
+import { sanitizeDelimiters } from './security.js';
+import { getLoadedBank } from './retrieval.js';
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const CANDIDATE_LEVEL = "college student or fresher applying for internships and entry-level roles";
