@@ -1,3 +1,9 @@
+import {
+  retrieveQuestions,
+  formatQuestionsForPrompt,
+  retrieveRubricForQuestion
+} from './retrieval';
+
 const API_KEY =
   typeof import.meta !== "undefined" &&
     import.meta.env &&
@@ -57,6 +63,47 @@ async function fetchGroqChatCompletion(payload) {
 }
 
 const CANDIDATE_LEVEL = "college student or fresher applying for internships and entry-level roles";
+
+function extractQueryFromContext(context) {
+  if (!context) return "";
+
+  const resumeMatch = context.match(/candidate resume context:\s*([\s\S]+)/i);
+  if (resumeMatch && resumeMatch[1]) {
+    const resumeText = resumeMatch[1];
+    const prefixContext = context.replace(/candidate resume context:[\s\S]+/i, '').trim();
+
+    // Extract high-signal Skills / Technologies / Projects sections from the resume
+    const skillsMatch = resumeText.match(/(?:skills|technical skills|technologies|tools|languages)\s*[:\-\n]([^\n]+(?:\n[^\n]+)?)/i);
+    const projectsMatch = resumeText.match(/(?:projects|key projects|academic projects)\s*[:\-\n]([^\n]+(?:\n[^\n]+)?)/i);
+
+    let parts = [];
+    if (prefixContext) parts.push(prefixContext.slice(0, 100));
+    if (skillsMatch && skillsMatch[1]) {
+      parts.push(skillsMatch[1].replace(/[\r\n]+/g, ' ').slice(0, 150));
+    }
+    if (projectsMatch && projectsMatch[1]) {
+      parts.push(projectsMatch[1].replace(/[\r\n]+/g, ' ').slice(0, 150));
+    }
+
+    if (parts.length > 0) {
+      return parts.join('; ').trim().slice(0, 300);
+    }
+
+    // Fallback: combine role/topic prefix and a concise slice of resume text
+    return `${prefixContext} ${resumeText.slice(0, 150)}`.trim();
+  }
+
+  return context.slice(0, 250).trim();
+}
+
+function extractQueryForNextQuestion(history, context) {
+  const shortContext = (context || "").replace(/candidate resume context:[\s\S]+/i, '').slice(0, 100).trim();
+  const lastAnswer = history && history.length > 0 ? history[history.length - 1].answer : "";
+  if (lastAnswer) {
+    return `${shortContext} ${lastAnswer.slice(0, 200)}`.trim();
+  }
+  return extractQueryFromContext(context);
+}
 
 let useFreeMode = true;
 let useOllamaMode = false;
@@ -139,12 +186,35 @@ export async function generateAIFeedback(
   const trimmedTranscript = (transcript || "").slice(0, 3000);
   const delaySec = (delay / 1000).toFixed(1);
 
-  const formattedResponses = responses.map((r, i) => `
-QUESTION ${i + 1}: ${r.questionText}
+  // Retrieve rubrics for each question where available (exact match or similarity >= 0.9)
+  let rubricList = [];
+  try {
+    rubricList = await Promise.all(
+      responses.map(async (r) => {
+        if (!r.questionText) return null;
+        return await retrieveRubricForQuestion(r.questionText);
+      })
+    );
+  } catch (err) {
+    console.warn("Rubric retrieval failed in generateAIFeedback, proceeding without rubrics:", err);
+    rubricList = responses.map(() => null);
+  }
+
+  const hasRubrics = rubricList.some(r => r && r.length > 0);
+
+  const formattedResponses = responses.map((r, i) => {
+    const rubric = rubricList[i];
+    const rubricSection = rubric && rubric.length > 0
+      ? `\nKEY EXPECTED RUBRIC CRITERIA:\n${rubric.map(point => `  * ${point}`).join("\n")}`
+      : "";
+
+    return `
+QUESTION ${i + 1}: ${r.questionText}${rubricSection}
 TRANSCRIPT: "${r.transcript || 'NO SPEECH DETECTED'}"
 DELAY: ${(r.delay / 1000).toFixed(1)}s
 FILLERS: ${r.fillerCount}
-`).join("\n---\n");
+`;
+  }).join("\n---\n");
 
   const systemPrompt = `You are an elite interview pressure coach. Your goal is to analyze the candidate's performance under stress.
 You must return your assessment in two parts:
@@ -155,6 +225,7 @@ CRITICAL FOCUS:
 - JUDGE RELEVANCE: Does the transcript actually answer the specific questions asked? If not, penalize the STRUCTURE score heavily.
 - ANALYZE FILLERS: If filler count is 0, highlight this as a major strength. If it's high, give specific advice.
 - SILENT SESSIONS: If transcripts are empty, state that the candidate failed to participate.
+${hasRubrics ? `- EVALUATE RUBRICS: For questions with "KEY EXPECTED RUBRIC CRITERIA", directly compare the candidate's transcript against those points. In SUMMARY and IMPROVEMENTS, explicitly mention which key points were covered and specifically name any criteria they missed.` : ''}
 
 SCORING RUBRIC (0-100):
 - CLARITY: Articulation purity. High fillers reduce this.
@@ -163,8 +234,8 @@ SCORING RUBRIC (0-100):
 - CONFIDENCE: Overall authority.
 
 RESPONSE FORMAT:
-SUMMARY: (3-4 concise sentences referencing specific TRANSCRIPT details and QUESTION relevance)
-IMPROVEMENTS: (3 actionable bullet points)
+SUMMARY: (3-4 concise sentences referencing specific TRANSCRIPT details and QUESTION relevance${hasRubrics ? ', explicitly naming key criteria covered or missed' : ''})
+IMPROVEMENTS: (3 actionable bullet points${hasRubrics ? ', specifying exact missed criteria from the rubric when applicable' : ''})
 MOTIVATION: (1 short punchy line)
 
 SCORES: {"clarity": X, "composure": X, "structure": X, "confidence": X}`;
@@ -377,6 +448,22 @@ export async function generateAIChat(messages, context, onToken = null, mode = '
 }
 
 export async function generateAIQuestions(context = "General High-Pressure Interview", count = 5, mode = 'groq', difficulty = 'medium', examples = "") {
+  let ragExamples = examples || "";
+  if (!ragExamples) {
+    try {
+      const query = extractQueryFromContext(context);
+      if (query) {
+        const retrieved = await retrieveQuestions(query, 4);
+        if (retrieved && retrieved.length > 0) {
+          ragExamples = formatQuestionsForPrompt(retrieved);
+        }
+      }
+    } catch (e) {
+      console.warn("RAG retrieval failed in generateAIQuestions, continuing with empty examples:", e);
+      ragExamples = "";
+    }
+  }
+
   const hasResumeContext = /candidate resume context:/i.test(context);
   const difficultyInstructions = {
     easy: "Generate beginner-friendly, straightforward questions focusing on fundamental concepts and basic scenarios. Keep questions simple and accessible.",
@@ -403,7 +490,7 @@ Rules:
 ${hasResumeContext
   ? '- RESUME PRIORITY: Most questions must be grounded in specific projects, tools, and decisions from the resume — ask why they chose something, what broke, or what they would change. Do not just ask them to describe a project.'
   : '- Ask broadly relevant questions for the given context.'}
-${examples ? `\nReal questions for style reference only, do not copy them: ${examples}` : ''}
+${ragExamples ? `\nReal questions for style reference only, do not copy them:\n${ragExamples}` : ''}
 
 Return ONLY a JSON array of strings. No introductory text, no markdown code blocks.
 Example: ["Question 1", "Question 2"]`;
@@ -441,6 +528,22 @@ Example: ["Question 1", "Question 2"]`;
 }
 
 export async function generateNextAIQuestion(history = [], context = "General High-Pressure Interview", mode = 'groq', difficulty = 'medium', examples = "") {
+  let ragExamples = examples || "";
+  if (!ragExamples) {
+    try {
+      const query = extractQueryForNextQuestion(history, context);
+      if (query) {
+        const retrieved = await retrieveQuestions(query, 3);
+        if (retrieved && retrieved.length > 0) {
+          ragExamples = formatQuestionsForPrompt(retrieved);
+        }
+      }
+    } catch (e) {
+      console.warn("RAG retrieval failed in generateNextAIQuestion, continuing with empty examples:", e);
+      ragExamples = "";
+    }
+  }
+
   const historyText = history.map((h, i) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}`).join('\n\n');
   const hasResumeContext = /candidate resume context:/i.test(context);
 
@@ -476,7 +579,7 @@ Rules:
 - ONE question, maximum 2 sentences, spoken style.
 - No praise, no feedback, no summary of their answer.
 - Never repeat or rephrase an earlier question.
-${examples ? `\nReal questions for style reference only, do not copy them: ${examples}` : ''}
+${ragExamples ? `\nReal questions for style reference only, do not copy them:\n${ragExamples}` : ''}
 
 Return ONLY the question text, no quotes or preamble.`;
 
@@ -511,6 +614,19 @@ Return ONLY the question text, no quotes or preamble.`;
 }
 
 export async function generateFollowupChallenge(previousQuestion = '', previousAnswer = '', difficulty = 'medium', examples = "") {
+  let ragExamples = examples || "";
+  if (!ragExamples && previousAnswer) {
+    try {
+      const retrieved = await retrieveQuestions(previousAnswer.slice(0, 200), 2);
+      if (retrieved && retrieved.length > 0) {
+        ragExamples = formatQuestionsForPrompt(retrieved);
+      }
+    } catch (e) {
+      console.warn("RAG retrieval failed in generateFollowupChallenge:", e);
+      ragExamples = "";
+    }
+  }
+
   const difficultyInstructions = {
     easy: "Ask a probing follow-up that gently challenges one part of the answer. Stay direct but not harsh.",
     medium: "Ask a sharp follow-up that exposes a gap, contradiction, or vague claim in the answer. Be direct and specific.",
@@ -541,7 +657,7 @@ Return ONLY the question text, no quotes or preamble.`
   : `Ask one direct, specific question on the context with no warm-up, the way a real interviewer opens when short on time.
 Rules: 1-2 sentences, plain spoken language, no theatrical phrasing.
 Return ONLY the question text, no quotes or preamble.`}
-${examples ? `\nReal questions for style reference only, do not copy them: ${examples}` : ''}`;
+${ragExamples ? `\nReal questions for style reference only, do not copy them:\n${ragExamples}` : ''}`;
 
   if (GROQ_API_KEY) {
     try {

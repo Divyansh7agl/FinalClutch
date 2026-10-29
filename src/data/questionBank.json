@@ -1,0 +1,242 @@
+[
+  {
+    "id": "dsa-01",
+    "topic": "DSA",
+    "difficulty": "easy",
+    "question": "Given an array of integers, how would you find two numbers that sum up to a specific target in linear time?",
+    "rubric": [
+      "Suggests using a hash map to store visited numbers and their indices in a single pass",
+      "Explains looking up whether the complement (target - current_number) already exists in the map",
+      "Correctly identifies O(N) time complexity and O(N) auxiliary space complexity",
+      "Mentions edge case handling such as duplicate numbers or no valid pair existing"
+    ]
+  },
+  {
+    "id": "dsa-02",
+    "topic": "DSA",
+    "difficulty": "medium",
+    "question": "How would you detect if a singly linked list contains a cycle, and how do you locate the starting node of the cycle?",
+    "rubric": [
+      "Applies Floyd's Tortoise and Hare algorithm using slow (1 step) and fast (2 steps) pointers",
+      "Explains that if fast reaches null there is no cycle, but if fast meets slow a cycle exists",
+      "Explains finding cycle start: reset one pointer to head and advance both one step at a time until they collide",
+      "Contrasts with hash set approach, proving Floyd's algorithm achieves O(N) time and O(1) space"
+    ]
+  },
+  {
+    "id": "dsa-03",
+    "topic": "DSA",
+    "difficulty": "medium",
+    "question": "How do you validate whether a given binary tree is a valid Binary Search Tree (BST)?",
+    "rubric": [
+      "Explains why only comparing parent to immediate left/right children is insufficient for deep subtree bounds",
+      "Describes passing valid min and max range constraints recursively down to subtrees",
+      "Alternatively describes in-order traversal and verifying that values are strictly ascending",
+      "States O(N) time complexity and O(H) auxiliary space on call stack where H is tree height"
+    ]
+  },
+  {
+    "id": "dbms-01",
+    "topic": "DBMS",
+    "difficulty": "medium",
+    "question": "What are the structural differences between a B-Tree index and a Hash index, and when would you choose one over the other?",
+    "rubric": [
+      "Explains B-Trees maintain sorted key order while Hash indexes map keys to buckets through a hash function",
+      "Highlights B-Trees support range queries, prefix searches, and ORDER BY clauses whereas Hash indexes only support exact equality (=)",
+      "Identifies search complexity as O(log N) for B-Tree vs average O(1) for Hash index",
+      "Explains why disk block/page access patterns in relational databases strongly favor B/B+ trees"
+    ]
+  },
+  {
+    "id": "dbms-02",
+    "topic": "DBMS",
+    "difficulty": "medium",
+    "question": "Explain the four ACID properties in relational databases and describe the phantom read concurrency phenomenon.",
+    "rubric": [
+      "Defines Atomicity (all-or-nothing), Consistency (integrity constraints), Isolation (concurrency boundaries), and Durability (WAL/persisted commits)",
+      "Defines phantom read: when a transaction re-executes a range query and discovers newly inserted rows committed by a concurrent transaction",
+      "Orders transaction isolation levels from lowest to highest: Read Uncommitted, Read Committed, Repeatable Read, Serializable",
+      "Names mitigation mechanisms like Multi-Version Concurrency Control (MVCC) or range/predicate locks"
+    ]
+  },
+  {
+    "id": "dbms-03",
+    "topic": "DBMS",
+    "difficulty": "hard",
+    "question": "What are the trade-offs between database normalization and denormalization in high-throughput production systems?",
+    "rubric": [
+      "Explains normalization (3NF/BCNF) minimizes data redundancy and avoids update, insert, and delete anomalies",
+      "Notes normalized schemas require multi-table JOINs that can degrade read performance under high scale",
+      "Explains denormalization duplicates or pre-aggregates data to optimize read latency and throughput",
+      "Highlights denormalization drawbacks: increased write overhead, storage costs, and risk of data inconsistencies"
+    ]
+  },
+  {
+    "id": "os-01",
+    "topic": "OS",
+    "difficulty": "medium",
+    "question": "What are the fundamental differences between a process and a thread regarding memory isolation and context-switching overhead?",
+    "rubric": [
+      "Explains a process has its own isolated virtual address space, file descriptors, and system resources",
+      "Explains threads belong to the same process, sharing heap, code, and globals while retaining private stack and register states",
+      "Details context-switch cost: process switches require TLB flushes and MMU page table swaps, whereas thread switches avoid TLB invalidation",
+      "Compares communication costs: threads communicate fast via shared memory; processes require IPC mechanisms"
+    ]
+  },
+  {
+    "id": "os-02",
+    "topic": "OS",
+    "difficulty": "hard",
+    "question": "What are the four necessary Coffman conditions for a deadlock to occur, and how can you design a system to prevent them?",
+    "rubric": [
+      "Identifies the four Coffman conditions: Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait",
+      "Explains deadlock prevention relies on architecturally breaking at least one condition",
+      "Explains breaking Circular Wait by imposing a strict global acquisition hierarchy on all system resources",
+      "Explains breaking Hold and Wait by requesting all needed locks atomically upfront or releasing before requesting"
+    ]
+  },
+  {
+    "id": "net-01",
+    "topic": "Networking",
+    "difficulty": "medium",
+    "question": "Walk through the TCP three-way handshake and contrast TCP reliability features with UDP characteristics.",
+    "rubric": [
+      "Explains the three-step sequence: SYN (initial sequence number), SYN-ACK (server acknowledge and response), and ACK (connection established)",
+      "Highlights TCP guarantees: packet retransmission, in-order sequencing, checksum integrity, and flow/congestion control",
+      "Contrasts UDP as connectionless, lightweight, and low-latency without ordering or delivery guarantees",
+      "Identifies use cases: TCP for web browsing (HTTP) and databases; UDP for real-time gaming, VoIP, and DNS"
+    ]
+  },
+  {
+    "id": "net-02",
+    "topic": "Networking",
+    "difficulty": "hard",
+    "question": "Explain what occurs during an HTTPS TLS handshake before encrypted application data begins flowing.",
+    "rubric": [
+      "Details Client Hello (supported ciphers, TLS version, client random) and Server Hello (selected cipher, server random)",
+      "Explains server digital certificate validation against pre-installed trusted root Certificate Authorities (CAs)",
+      "Explains key exchange (e.g. Diffie-Hellman / ECDHE) generating shared premaster secret with Forward Secrecy",
+      "Clarifies symmetric encryption (e.g. AES-GCM) is used for bulk application payload data due to performance"
+    ]
+  },
+  {
+    "id": "react-01",
+    "topic": "React",
+    "difficulty": "medium",
+    "question": "How does React's Virtual DOM and reconciliation algorithm work, and why is the key prop critical when rendering lists?",
+    "rubric": [
+      "Defines Virtual DOM as an in-memory JS representation of the real DOM tree",
+      "Explains diffing heuristic: components of different types produce different trees, and lists utilize keys to match elements",
+      "Explains that without stable keys, React defaults to index-based reconciliation, triggering unnecessary DOM mutations and state leaks",
+      "Warns against using array indices or random numbers as keys when items are reordered, filtered, or prepended"
+    ]
+  },
+  {
+    "id": "react-02",
+    "topic": "React",
+    "difficulty": "medium",
+    "question": "How does the useEffect cleanup function work in React, and what kinds of bugs or leaks does it prevent?",
+    "rubric": [
+      "Explains cleanup executes both before the component unmounts and prior to re-running the effect on dependency change",
+      "Gives practical examples: removing DOM event listeners, clearing timers (clearInterval), and aborting Fetch via AbortController",
+      "Explains how omitting dependencies creates stale closures referencing outdated state or props",
+      "Explains how missing cleanup causes memory leaks and console warnings when trying to update unmounted component state"
+    ]
+  },
+  {
+    "id": "react-03",
+    "topic": "React",
+    "difficulty": "hard",
+    "question": "When should you use React Context versus an external state management library like Zustand or Redux, and what are the performance implications?",
+    "rubric": [
+      "Explains React Context is designed for low-frequency global updates like current user, locale, or dark/light theme",
+      "Highlights performance bottleneck: updating a Context provider re-renders all consuming components regardless of what slice they use",
+      "Explains external stores (Zustand, Redux) support selective subscriptions via selectors, re-rendering only components whose selected slice changed",
+      "Advocates keeping local state close to where it is used (useState/useReducer) before introducing global state"
+    ]
+  },
+  {
+    "id": "node-01",
+    "topic": "Node",
+    "difficulty": "medium",
+    "question": "How does the Node.js event loop handle non-blocking asynchronous I/O, and what role does libuv play?",
+    "rubric": [
+      "Explains JavaScript runs on a single main thread, while libuv delegates I/O and expensive operations to kernel APIs or a thread pool",
+      "Lists major event loop phases: Timers (setTimeout/setInterval), Poll (incoming I/O), and Check (setImmediate)",
+      "Explains microtask queue execution (process.nextTick and Promise callbacks) running immediately between event loop phases",
+      "Explains why CPU-intensive tasks block the main thread and prevent the event loop from servicing incoming requests"
+    ]
+  },
+  {
+    "id": "node-02",
+    "topic": "Node",
+    "difficulty": "medium",
+    "question": "What is the difference between Streams and Buffers in Node.js, and how does backpressure prevent application memory crashes?",
+    "rubric": [
+      "Explains Buffers allocate the complete payload into memory at once, risking heap exhaustion on large files",
+      "Explains Streams process data chunk-by-chunk in a continuous pipeline (Readable, Writable, Duplex, Transform)",
+      "Defines backpressure: when a fast readable stream pauses reading because the slow writable stream's internal buffer (highWaterMark) is saturated",
+      "Demonstrates using stream.pipe() or stream.pipeline() to handle backpressure and error teardown automatically"
+    ]
+  },
+  {
+    "id": "sys-01",
+    "topic": "System Design",
+    "difficulty": "medium",
+    "question": "How would you design a scalable URL shortener service like TinyURL, focusing on short-code generation and database schema?",
+    "rubric": [
+      "Evaluates short-code generation: Base62 encoding of an auto-incrementing ID vs MD5/SHA-256 hash truncation with collision resolution",
+      "Defines database schema containing original_url, short_code, created_at, user_id, and optional expiration date",
+      "Contrasts HTTP 301 (Permanent Redirect cached by browser) vs HTTP 302/307 (Temporary Redirect allowing analytics tracking)",
+      "Recommends adding an in-memory cache layer (e.g. Redis LRU) to absorb high read-to-write ratio lookups"
+    ]
+  },
+  {
+    "id": "sys-02",
+    "topic": "System Design",
+    "difficulty": "hard",
+    "question": "How does the Token Bucket rate limiting algorithm work, and how would you implement distributed rate limiting across multiple servers?",
+    "rubric": [
+      "Explains Token Bucket mechanics: tokens are added at a constant refill rate up to bucket capacity; each request consumes tokens; empty bucket drops requests",
+      "Highlights Token Bucket advantage: gracefully accommodates temporary traffic bursts up to maximum capacity",
+      "Describes distributed implementation using centralized Redis with atomic Lua scripts to prevent concurrent race conditions",
+      "Considers failure modes and resilient fallbacks: fail-open vs fail-closed strategies when Redis cluster is degraded"
+    ]
+  },
+  {
+    "id": "sys-03",
+    "topic": "System Design",
+    "difficulty": "hard",
+    "question": "Explain the Cache-Aside pattern, its alternatives, and how you prevent cache stampede (thundering herd) and stale reads.",
+    "rubric": [
+      "Defines Cache-Aside: application reads cache; on miss, fetches from DB, writes to cache, and returns; writes update DB and invalidate cache",
+      "Contrasts with Write-Through (writes update cache and DB simultaneously) and Write-Back (writes update cache first, DB asynchronously)",
+      "Explains Cache Stampede: concurrent requests overwhelming the DB when a hot cached key expires, and mitigates via mutex locking or early probabilistic expiration (XFetch)",
+      "Addresses cache consistency challenges and TTL expiration strategies"
+    ]
+  },
+  {
+    "id": "hr-01",
+    "topic": "HR",
+    "difficulty": "easy",
+    "question": "Tell me about a time you strongly disagreed with a team member or tech lead on a technical approach. How did you resolve it?",
+    "rubric": [
+      "Describes a specific, concrete technical disagreement with clear context and competing options",
+      "Demonstrates reliance on objective benchmarks, prototypes, or user requirements over personal opinions",
+      "Shows active listening to the counterparty's arguments and engineering constraints",
+      "Demonstrates 'disagree and commit' maturity: executing the final team consensus wholeheartedly regardless of personal preference"
+    ]
+  },
+  {
+    "id": "hr-02",
+    "topic": "HR",
+    "difficulty": "medium",
+    "question": "Describe a situation where a code change you deployed caused an unexpected production issue. How did you handle the incident and what did you learn?",
+    "rubric": [
+      "Takes clear ownership of the failure without shifting blame to teammates or tooling",
+      "Prioritizes immediate incident mitigation (rollback, feature flag toggle, hotfix) to minimize user impact before root-cause debugging",
+      "Communicates transparently and promptly with stakeholders regarding status and impact",
+      "Outlines systemic post-mortem improvements (automated regression tests, monitoring alerts, staging checks) to prevent recurrence"
+    ]
+  }
+]
