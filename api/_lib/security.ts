@@ -74,13 +74,13 @@ export function validateOrigin(headers: Record<string, string | string[] | undef
     return { allowed: true, matchedOrigin: requestOrigin };
   }
 
-  // 3. Allow Vercel preview and production deployments for this domain
-  if (lower.endsWith('.vercel.app') && (lower.includes('finalclutch') || lower.includes('clutch'))) {
+  // 3. Allow Vercel and Netlify deployments
+  if (lower.includes('netlify.app') || lower.includes('vercel.app')) {
     return { allowed: true, matchedOrigin: requestOrigin };
   }
 
-  // 4. Same-origin check against host header
-  const host = (headers['host'] as string) || '';
+  // 4. Same-origin check against host or x-forwarded-host
+  const host = (headers['x-forwarded-host'] as string) || (headers['host'] as string) || '';
   if (host) {
     const expectedOriginHttp = `http://${host}`.toLowerCase();
     const expectedOriginHttps = `https://${host}`.toLowerCase();
