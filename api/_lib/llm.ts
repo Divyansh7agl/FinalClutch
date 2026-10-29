@@ -107,7 +107,11 @@ export async function callGroqWithFallback(
   payload: Record<string, any>,
   overrideModels?: string[]
 ): Promise<GroqCallResult> {
-  const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || "";
+  const apiKey =
+    process.env.GROQ_API_KEY ||
+    process.env.VITE_GROQ_API_KEY ||
+    (typeof globalThis !== 'undefined' && (globalThis as any).Netlify?.env?.get('GROQ_API_KEY')) ||
+    '';
   if (!apiKey) {
     console.error("[LLM Error] GROQ_API_KEY is not configured on the server. ReasonCode: ERR_GROQ_KEY_MISSING");
     return { ok: false, error: "GROQ_API_KEY missing", reasonCode: "ERR_GROQ_KEY_MISSING" };

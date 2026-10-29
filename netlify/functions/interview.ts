@@ -1,7 +1,7 @@
 import interviewHandler from '../../api/interview.js';
 
 export const config = {
-  path: '/api/interview'
+  path: ['/api/interview', '/.netlify/functions/interview']
 };
 
 export default async (req: Request) => {
@@ -28,12 +28,13 @@ export default async (req: Request) => {
     method: req.method,
     headers,
     body,
-    socket: { remoteAddress: req.headers.get('x-forwarded-for') || req.headers.get('client-ip') || '127.0.0.1' }
+    socket: { remoteAddress: req.headers.get('x-forwarded-for') || req.headers.get('client-ip') || '127.0.0.1' },
+    on: () => {}
   };
 
   let statusCode = 200;
   const resHeaders = new Headers();
-  let resBody = '';
+  let resBody: any = '';
 
   const mockRes: any = {
     statusCode: 200,
@@ -49,8 +50,8 @@ export default async (req: Request) => {
       this.setHeader('Content-Type', 'application/json');
       resBody = JSON.stringify(data);
     },
-    end(data?: string) {
-      if (data) resBody = data;
+    end(data?: any) {
+      if (data !== undefined && data !== null) resBody = data;
     }
   };
 
@@ -65,6 +66,13 @@ export default async (req: Request) => {
   }
 
   if (mockRes.statusCode) statusCode = mockRes.statusCode;
+
+  if (statusCode === 204 || statusCode === 205 || statusCode === 304) {
+    return new Response(null, {
+      status: statusCode,
+      headers: resHeaders
+    });
+  }
 
   return new Response(resBody, {
     status: statusCode,

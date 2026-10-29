@@ -85,7 +85,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const apiKey = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY || '';
+  const apiKey =
+    process.env.GROQ_API_KEY ||
+    process.env.VITE_GROQ_API_KEY ||
+    (typeof globalThis !== 'undefined' && (globalThis as any).Netlify?.env?.get('GROQ_API_KEY')) ||
+    '';
   if (!apiKey) {
     return sendJson(500, { error: 'GROQ_API_KEY missing on server', reasonCode: 'ERR_GROQ_KEY_MISSING' });
   }
