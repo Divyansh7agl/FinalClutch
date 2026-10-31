@@ -110,7 +110,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStart, onOpenAuth }) => {
               </p>
 
               <div className="mt-7 flex flex-wrap gap-2.5">
-                {['Live transcription', 'Resume-aware AI', 'Performance scoring', 'Panic simulation'].map(t => (
+                {['Live transcription', 'Resume-aware AI', 'Performance scoring', 'Online assessment'].map(t => (
                   <span key={t} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-1.5 text-[11px] text-slate-300 font-medium">{t}</span>
                 ))}
               </div>
@@ -333,4 +333,3 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onStart, onOpenAuth }) => {
 };
 
 export default HomeScreen;
-

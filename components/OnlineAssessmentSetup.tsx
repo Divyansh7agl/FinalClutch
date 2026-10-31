@@ -3,12 +3,12 @@ import React, { useState } from 'react';
 import { DifficultyLevel } from '../types';
 import Logo from './Logo';
 
-interface PanicSetupProps {
+interface OnlineAssessmentSetupProps {
     onConfirm: (difficulty: DifficultyLevel) => void;
     onBack: () => void;
 }
 
-const PanicSetup: React.FC<PanicSetupProps> = ({ onConfirm, onBack }) => {
+const OnlineAssessmentSetup: React.FC<OnlineAssessmentSetupProps> = ({ onConfirm, onBack }) => {
     const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
 
     const handleStart = () => {
@@ -19,21 +19,21 @@ const PanicSetup: React.FC<PanicSetupProps> = ({ onConfirm, onBack }) => {
         <div className="flex flex-col items-center justify-center min-h-full py-16 px-6 bg-[#0a0c10]">
             <div className="mb-8 text-center">
                 <Logo size="md" />
-                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Panic Setup</p>
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Assessment Setup</p>
             </div>
 
             <div className="max-w-2xl w-full glass-card p-12 rounded-[2.5rem] border border-red-500/20 shadow-[0_20px_50px_rgba(239,68,68,0.10)] relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 text-8xl opacity-5 font-serif italic text-red-500">P</div>
+                <div className="absolute top-0 right-0 p-8 text-8xl opacity-5 font-serif italic text-blue-500">A</div>
 
                 <div className="relative z-10">
-                    <h2 className="text-3xl font-bold mb-2 text-white">Panic Mode Setup</h2>
+                    <h2 className="text-3xl font-bold mb-2 text-white">Online Assessment Setup</h2>
                     <p className="text-slate-500 mb-10 text-sm font-medium tracking-wide">
-                        A high-intensity stress drill with rapid prompts to strengthen response speed and composure.
+                        A focused timed assessment with technical and behavioural questions to help you practise under realistic conditions.
                     </p>
 
                     <div className="space-y-8">
                         <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500 ml-1">Difficulty Level</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400 ml-1">Difficulty Level</label>
                             <div className="grid grid-cols-3 gap-3">
                                 <button
                                     type="button"
@@ -71,9 +71,9 @@ const PanicSetup: React.FC<PanicSetupProps> = ({ onConfirm, onBack }) => {
                         <div className="pt-6 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
                             <button
                                 onClick={handleStart}
-                                className="w-full sm:w-auto px-12 py-4 bg-red-500 text-white font-black rounded-2xl hover:bg-red-400 transition-all uppercase tracking-[0.2em] text-[11px] shadow-[0_12px_30px_rgba(239,68,68,0.30)]"
+                                className="w-full sm:w-auto px-12 py-4 bg-blue-500 text-white font-black rounded-2xl hover:bg-blue-400 transition-all uppercase tracking-[0.2em] text-[11px] shadow-[0_12px_30px_rgba(59,130,246,0.30)]"
                             >
-                                Start Stress Drill
+                                Start Assessment
                             </button>
                             <button
                                 type="button"
@@ -88,10 +88,10 @@ const PanicSetup: React.FC<PanicSetupProps> = ({ onConfirm, onBack }) => {
             </div>
 
             <div className="mt-12 group cursor-default">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.35em] group-hover:text-red-300/80 transition-colors">Stress mode ready</p>
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-[0.35em] group-hover:text-blue-300/80 transition-colors">Assessment ready</p>
             </div>
         </div>
     );
 };
 
-export default PanicSetup;
+export default OnlineAssessmentSetup;

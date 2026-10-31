@@ -18,14 +18,14 @@ interface SimulationProps {
 const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete, onQuit }) => {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [questions, setQuestions] = useState<QuestionData[]>([]);
-  const [timeLeft, setTimeLeft] = useState(mode === 'panic' ? 60 : 0);
+  const [timeLeft, setTimeLeft] = useState(mode === 'online-assessment' ? 15 * 60 : 0);
   const [pressureScore, setPressureScore] = useState(0);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
   const [interviewStage, setInterviewStage] = useState<'lobby' | 'interview' | 'candidate-questions'>('lobby');
   const [isPausePending, setIsPausePending] = useState(false);
-  const [showTranscript, setShowTranscript] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(true);
   const [aiInterviewHistory, setAiInterviewHistory] = useState<{ question: string; answer: string }[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
@@ -52,9 +52,10 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
   const responseSubmittingRef = useRef(false);
   const hasInitializedRef = useRef(false);
   const sessionStartedAtRef = useRef(Date.now());
-  const MAX_AI_SESSION_SECONDS = 25 * 60;
-  const MIN_AI_ROUNDS = 6;
-  const MAX_AI_ROUNDS = 12;
+  const MAX_ADAPTIVE_SESSION_SECONDS = 25 * 60;
+  const MIN_ADAPTIVE_ROUNDS = 6;
+  const MAX_ADAPTIVE_ROUNDS = 12;
+  const isAdaptiveInterview = isAIActive || isCustomActive;
 
 
 
@@ -179,8 +180,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           combinedContext = `General software / tech internship or entry-level interview.${resumePrompt}`;
         } else if (mode === 'viva') {
           combinedContext = `Technical viva-style interview for an engineering or CS internship candidate.${resumePrompt}`;
-        } else if (mode === 'panic') {
-          combinedContext = `Rapid-fire technical and behavioural questions for a fresher applying to tech internships.${resumePrompt}`;
+        } else if (mode === 'online-assessment') {
+          combinedContext = `Timed online assessment with technical and behavioural questions for a fresher applying to tech internships.${resumePrompt}`;
         } else {
           combinedContext = `Entry-level job or internship interview.${resumePrompt}`;
         }
@@ -199,12 +200,12 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           const firstQuestion = await generateFollowupChallenge('', '', difficulty);
           qs = [{ id: `followup-start-${Date.now()}`, text: firstQuestion }];
         } else {
-          const aiQuestions = await generateAIQuestions(combinedContext, mode === 'panic' ? 10 : 3, 'groq', difficulty);
+          const aiQuestions = await generateAIQuestions(combinedContext, mode === 'online-assessment' ? 10 : 3, 'groq', difficulty);
           if (aiQuestions && aiQuestions.length > 0) {
             qs = aiQuestions;
           } else {
             const shuffled = [...QUESTIONS].sort(() => Math.random() - 0.5);
-            qs = mode === 'panic' ? shuffled : shuffled.slice(0, 3);
+            qs = mode === 'online-assessment' ? shuffled : shuffled.slice(0, 3);
           }
         }
         setQuestions(qs);
@@ -212,7 +213,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       } catch (err) {
         console.error("AI question generation failed:", err);
         const shuffled = [...QUESTIONS].sort(() => Math.random() - 0.5);
-        setQuestions(mode === 'panic' ? shuffled : shuffled.slice(0, 3));
+        setQuestions(mode === 'online-assessment' ? shuffled : shuffled.slice(0, 3));
       } finally {
         setIsLoadingQuestions(false);
         questionStartRef.current = Date.now();
@@ -289,7 +290,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     structure = Math.max(20, Math.min(100, structure));
 
     let basePressure = (100 - clarity) * 0.25 + (100 - composure) * 0.45 + (100 - structure) * 0.3;
-    if (mode === 'panic') basePressure *= SCORING.PANIC_MULTIPLIER;
+    if (mode === 'online-assessment') basePressure *= SCORING.ASSESSMENT_MULTIPLIER;
     const confidence = Math.max(0, Math.min(100, 100 - basePressure));
 
     const combinedTranscriptFinal = responses.map(r => r.transcript).join(' ').trim();
@@ -314,22 +315,22 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - sessionStartedAtRef.current) / 1000);
       setElapsedSeconds(elapsed);
-      if (isAIActive && elapsed >= MAX_AI_SESSION_SECONDS) {
+      if (isAdaptiveInterview && elapsed >= MAX_ADAPTIVE_SESSION_SECONDS) {
         stopListening();
         calculateFinalResults();
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isConversational, isAIActive, stopListening, calculateFinalResults]);
+  }, [isConversational, isAdaptiveInterview, stopListening, calculateFinalResults]);
 
   const advanceQuestion = useCallback(async () => {
     const lastResponse = processResponse();
     stopListening();
 
     const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
-    const limit = isAIActive ? MAX_AI_ROUNDS : isConversational ? 5 : questions.length;
+    const limit = isAdaptiveInterview ? MAX_ADAPTIVE_ROUNDS : isConversational ? 5 : questions.length;
 
-    if (currentQuestionIdx >= limit - 1 && mode !== 'panic') {
+    if (currentQuestionIdx >= limit - 1 && mode !== 'online-assessment') {
       resetTranscript();
       setInterviewStage('candidate-questions');
       speakQuestion("That's all the questions I have. Before we finish, what questions would you like to ask me?");
@@ -364,7 +365,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
             ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}${resumeSuffix}`
             : `General Professional Interview${resumeSuffix}`;
           const nextDecision = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
-          if (isAIActive && newHistory.length >= MIN_AI_ROUNDS && nextDecision.shouldEnd) {
+          if (isAdaptiveInterview && newHistory.length >= MIN_ADAPTIVE_ROUNDS && nextDecision.shouldEnd) {
             calculateFinalResults();
             return;
           }
@@ -390,13 +391,13 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         setIsAIThinking(false);
       }
     } else if (currentQuestionIdx < questions.length - 1) {
-      // Non-conversational (viva/panic) — advance to next pre-loaded question
+      // Non-conversational (viva/online assessment) — advance to the next pre-loaded question
       setCurrentQuestionIdx(prev => prev + 1);
       resetTranscript();
       questionStartRef.current = Date.now();
       micActivationRef.current = null;
     } else calculateFinalResults();
-  }, [currentQuestionIdx, questions, processResponse, calculateFinalResults, stopListening, resetTranscript, mode, aiInterviewHistory, speakQuestion, customContext]);
+  }, [currentQuestionIdx, questions, processResponse, calculateFinalResults, stopListening, resetTranscript, mode, aiInterviewHistory, speakQuestion, customContext, isAdaptiveInterview]);
 
   const nextQuestion = useCallback(() => {
     if (responseSubmittingRef.current) return;
@@ -414,7 +415,6 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
 
     const answerText = `${transcript} ${interimTranscript}`.trim();
     const shouldAutoSubmit = interviewStage === 'interview'
-      && mode !== 'panic'
       && isListening
       && !isAISpeaking
       && !isAIThinking
@@ -470,20 +470,14 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
 
   useEffect(() => {
     let interval: any;
-    if (mode === 'panic' && isListening && timeLeft > 0) {
+    if (mode === 'online-assessment' && isListening && timeLeft > 0) {
       interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000);
-    } else if (mode === 'panic' && isListening && timeLeft === 0) {
+    } else if (mode === 'online-assessment' && isListening && timeLeft === 0) {
       stopListening();
       calculateFinalResults();
     }
     return () => clearInterval(interval);
   }, [mode, timeLeft, calculateFinalResults, stopListening, isListening]);
-
-  useEffect(() => {
-    if (mode === 'panic' && isListening && timeLeft > 0 && timeLeft % 15 === 0 && timeLeft !== 60) {
-      nextQuestion();
-    }
-  }, [mode, timeLeft, nextQuestion, isListening]);
 
   const toggleMic = () => {
     if (isListening) {
@@ -553,10 +547,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       }
 
       // ── Mode modifiers ───────────────────────────────────────────────────────
-      if (mode === 'panic') {
-        currentP *= 1.25;
-        if (timeLeft < 10) currentP += 20; // urgency spike in final 10 s
-      } else if (mode === 'followup') {
+      if (mode === 'followup') {
         currentP *= 1.1;  // slightly elevated — adversarial context
       } else if (mode === 'ai-interview' || mode === 'custom') {
         currentP *= 0.85; // conversational — less raw pressure
@@ -589,7 +580,13 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           {mode === 'ai-interview' ? 'Initializing Neural Link' : mode === 'followup' ? 'Calibrating Adversary' : 'Generating AI Challenges'}
         </h2>
         <p className="mt-4 text-slate-500 font-mono text-xs uppercase tracking-widest">
-          {mode === 'ai-interview' ? 'Syncing with conversational AI...' : mode === 'followup' ? 'Preparing hostile interrogation mode...' : 'Constructing psychological pressure scenarios...'}
+          {mode === 'ai-interview'
+            ? 'Syncing with conversational AI...'
+            : mode === 'followup'
+              ? 'Preparing hostile interrogation mode...'
+              : mode === 'online-assessment'
+                ? 'Preparing your timed assessment...'
+                : 'Preparing interview questions...'}
         </p>
       </div>
     );
@@ -607,7 +604,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
 
   if (interviewStage === 'lobby') {
     const interviewerRole = customContext?.role || (mode === 'viva' ? 'Technical Interviewer' : 'Senior Hiring Manager');
-    const interviewType = mode === 'panic' ? 'Rapid-response practice interview' : mode === 'followup' ? 'Deep-dive technical interview' : 'Structured practice interview';
+    const interviewType = mode === 'online-assessment' ? 'Timed online assessment' : mode === 'followup' ? 'Deep-dive technical interview' : 'Structured practice interview';
     return (
       <div className="flex items-center justify-center h-full p-6 bg-[#0a0c10] relative overflow-hidden">
         <div className="absolute inset-0 bg-emerald-500/[0.03] pointer-events-none" />
@@ -639,7 +636,6 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     );
   }
 
-  const isPanicShaking = mode === 'panic' && timeLeft < 10;
   const themeColor = isAIActive ? 'emerald' : isCustomActive ? 'orange' : isFollowupActive ? 'red' : 'blue';
   const interviewPhase = currentQuestionIdx === 0
     ? 'Opening & background'
@@ -651,7 +647,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           ? 'Behavioral judgment'
           : 'Closing assessment';
   return (
-    <div className={`flex flex-col h-full bg-[#0a0c10] relative transition-all duration-500 ${isPanicShaking ? 'bg-red-950/20' : ''}`}>
+    <div className="flex flex-col h-full bg-[#0a0c10] relative transition-all duration-500">
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent" />
@@ -676,17 +672,17 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
             <p className="text-[9px] uppercase tracking-widest text-slate-600">Private session</p>
           </div>
         </div>
-        <div className={`flex items-center gap-3 ${isPanicShaking ? 'animate-shake' : ''}`}>
+        <div className="flex items-center gap-3">
           <div className="hidden md:block"><Logo size="sm" /></div>
-          <div className={`text-2xl md:text-3xl font-black tabular-nums tracking-tight ${timeLeft < 10 && mode === 'panic' ? 'text-red-500' : 'text-white'}`}>
-            {mode === 'panic'
-              ? timeLeft
-              : isAIActive
+          <div className={`text-2xl md:text-3xl font-black tabular-nums tracking-tight ${mode === 'online-assessment' ? 'text-blue-300' : 'text-white'}`}>
+            {mode === 'online-assessment'
+              ? `${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}`
+              : isAdaptiveInterview
                 ? `${String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:${String(elapsedSeconds % 60).padStart(2, '0')}`
                 : `${currentQuestionIdx + 1}/${isConversational ? 5 : 3}`}
           </div>
           <div className="hidden sm:block text-[9px] uppercase font-bold tracking-[0.25em] text-slate-600">
-            {mode === 'panic' ? 'Time remaining' : isAIActive ? 'Interview time' : 'Question'}
+            {mode === 'online-assessment' ? 'Time remaining' : isAdaptiveInterview ? 'Interview time' : 'Question'}
           </div>
           {isAIActive && (
             <span className="hidden lg:inline rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[9px] uppercase tracking-widest text-emerald-300">{interviewPhase}</span>
@@ -869,12 +865,12 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
             </button>
           )}
 
-          {mode === 'panic' && (
+          {mode === 'online-assessment' && (
             <button
               onClick={endSessionEarly}
-              className="group px-10 py-4 border border-red-500/40 text-red-400 font-black rounded-2xl transition-all hover:bg-red-500 hover:text-white uppercase tracking-[0.3em] text-[10px] shadow-xl"
+              className="group px-10 py-4 border border-blue-500/40 text-blue-400 font-black rounded-2xl transition-all hover:bg-blue-500 hover:text-white uppercase tracking-[0.3em] text-[10px] shadow-xl"
             >
-              End Session
+              End Assessment
             </button>
           )}
         </div>

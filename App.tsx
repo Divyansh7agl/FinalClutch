@@ -4,7 +4,7 @@ import { AppState, SimulationMode, PerformanceMetrics, SessionData, CustomContex
 import HomeScreen from './components/HomeScreen';
 import ModeSelect from './components/ModeSelect';
 import VivaSetup from './components/VivaSetup';
-import PanicSetup from './components/PanicSetup';
+import OnlineAssessmentSetup from './components/OnlineAssessmentSetup';
 import AIInterviewSetup from './components/AIInterviewSetup';
 import Simulation from './components/Simulation';
 import ReportScreen from './components/ReportScreen';
@@ -13,7 +13,7 @@ import FollowupSetup from './components/FollowupSetup';
 import AuthModal from './components/AuthModal';
 import { useAuth } from './src/context/AuthContext';
 
-type AppScreen = AppState | 'viva-setup' | 'panic-setup' | 'ai-interview-setup' | 'followup-setup';
+type AppScreen = AppState | 'viva-setup' | 'online-assessment-setup' | 'ai-interview-setup' | 'followup-setup';
 
 const App: React.FC = () => {
   const { currentUser, loading, isFirebaseConfigured } = useAuth();
@@ -99,8 +99,8 @@ const App: React.FC = () => {
       case 'viva':
         setCurrentScreen('viva-setup');
         break;
-      case 'panic':
-        setCurrentScreen('panic-setup');
+      case 'online-assessment':
+        setCurrentScreen('online-assessment-setup');
         break;
       case 'ai-interview':
         setCurrentScreen('ai-interview-setup');
@@ -124,7 +124,7 @@ const App: React.FC = () => {
     setCurrentScreen('simulation');
   };
 
-  const handlePanicSetupConfirm = (selectedDifficulty: DifficultyLevel) => {
+  const handleOnlineAssessmentSetupConfirm = (selectedDifficulty: DifficultyLevel) => {
     setDifficulty(selectedDifficulty);
     setCurrentScreen('simulation');
   };
@@ -178,8 +178,8 @@ const App: React.FC = () => {
       {currentScreen === 'viva-setup' && (
         <VivaSetup onConfirm={handleVivaSetupConfirm} onBack={() => setCurrentScreen('mode-select')} />
       )}
-      {currentScreen === 'panic-setup' && (
-        <PanicSetup onConfirm={handlePanicSetupConfirm} onBack={() => setCurrentScreen('mode-select')} />
+      {currentScreen === 'online-assessment-setup' && (
+        <OnlineAssessmentSetup onConfirm={handleOnlineAssessmentSetupConfirm} onBack={() => setCurrentScreen('mode-select')} />
       )}
       {currentScreen === 'ai-interview-setup' && (
         <AIInterviewSetup onConfirm={handleAIInterviewSetupConfirm} onBack={() => setCurrentScreen('mode-select')} />

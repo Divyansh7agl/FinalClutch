@@ -1,6 +1,6 @@
 
 export type AppState = 'home' | 'mode-select' | 'custom-setup' | 'simulation' | 'report';
-export type SimulationMode = 'viva' | 'panic' | 'ai-interview' | 'custom' | 'followup';
+export type SimulationMode = 'viva' | 'online-assessment' | 'ai-interview' | 'custom' | 'followup';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 export interface CustomContext {
