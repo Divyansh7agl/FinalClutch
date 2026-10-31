@@ -173,12 +173,34 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
           if (scoreMatch) {
             try {
               const scored = JSON.parse(scoreMatch[1]);
+              const speechMechanics = metrics.speechMechanics ?? metrics.clarity;
+              const scoreOrFallback = (value: unknown, fallback: number) => {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? Math.max(0, Math.min(100, Math.round(parsed))) : fallback;
+              };
+              const contentQuality = scoreOrFallback(scored.contentQuality, metrics.structure);
+              const relevance = scoreOrFallback(scored.relevance, metrics.clarity);
+              const communication = scoreOrFallback(scored.communication, metrics.clarity);
+              const structure = scoreOrFallback(scored.structure, metrics.structure);
+              const composure = scoreOrFallback(scored.composure, metrics.composure);
+              const overall = Math.round(
+                contentQuality * 0.4
+                + relevance * 0.2
+                + communication * 0.15
+                + structure * 0.1
+                + composure * 0.1
+                + speechMechanics * 0.05
+              );
               setAiMetrics({
                 ...metrics,
-                clarity: scored.clarity,
-                composure: scored.composure,
-                structure: scored.structure,
-                confidence: scored.confidence
+                clarity: communication,
+                composure,
+                structure,
+                confidence: overall,
+                contentQuality,
+                relevance,
+                communication,
+                speechMechanics
               });
             } catch (e) { }
           }
@@ -209,7 +231,7 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
               {displayMetrics.confidence}<span className="text-blue-600">%</span>
             </h2>
             <div className="flex items-center justify-center space-x-3 mt-3">
-              <p className="text-sm font-black uppercase tracking-[0.5em] text-slate-600">Composure Index</p>
+              <p className="text-sm font-black uppercase tracking-[0.5em] text-slate-600">Overall Interview Score</p>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${overallBand.badgeClass}`}>
                 {overallBand.label}
               </span>
@@ -219,9 +241,30 @@ const ReportScreen: React.FC<ReportScreenProps> = ({ metrics, previousMetrics, o
 
         {/* Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <MetricCard title="Clarity" score={displayMetrics.clarity} color="text-emerald-400" desc="Articulation purity." />
-          <MetricCard title="Stability" score={displayMetrics.composure} color="text-blue-500" desc="Temporal mastery." />
-          <MetricCard title="Logic" score={displayMetrics.structure} color="text-cyan-400" desc="Conceptual depth." />
+          <MetricCard title="Content" score={displayMetrics.contentQuality ?? displayMetrics.structure} color="text-emerald-400" desc="Correctness, depth, evidence, and trade-offs." />
+          <MetricCard title="Relevance" score={displayMetrics.relevance ?? displayMetrics.clarity} color="text-violet-400" desc="How directly each answer addressed the question." />
+          <MetricCard title="Communication" score={displayMetrics.communication ?? displayMetrics.clarity} color="text-blue-500" desc="Clear, direct explanations with controlled delivery." />
+          <MetricCard title="Composure" score={displayMetrics.composure} color="text-cyan-400" desc="Pacing and recovery under interview pressure." />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Structure</p>
+            <p className="mt-2 text-2xl font-black text-white">{displayMetrics.structure}%</p>
+            <p className="mt-1 text-[11px] text-slate-500">Logical flow and complete reasoning.</p>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Speech mechanics</p>
+            <p className="mt-2 text-2xl font-black text-white">{displayMetrics.speechMechanics ?? displayMetrics.clarity}%</p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {displayMetrics.fillerRate !== undefined ? `${(displayMetrics.fillerRate * 100).toFixed(1)}% filler rate` : 'Pacing and filler control'}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Scoring model</p>
+            <p className="mt-2 text-2xl font-black text-white">Hybrid</p>
+            <p className="mt-1 text-[11px] text-slate-500">AI content analysis plus delivery signals.</p>
+          </div>
         </div>
 
         {/* AI Assessment */}

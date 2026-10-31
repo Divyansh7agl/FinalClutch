@@ -22,6 +22,12 @@ export interface PerformanceMetrics {
   structure: number;
   confidence: number;
   fillerCount: number;
+  fillerRate?: number;
+  totalWords?: number;
+  speechMechanics?: number;
+  contentQuality?: number;
+  relevance?: number;
+  communication?: number;
   avgDelay: number;
   transcript?: string;
   responses?: ResponseMetric[];

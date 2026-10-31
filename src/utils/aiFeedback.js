@@ -189,7 +189,8 @@ export async function generateAIFeedback(
           rubric: rubric || undefined,
           transcript: r.transcript || '',
           delay: r.delay || 0,
-          fillerCount: r.fillerCount || 0
+          fillerCount: r.fillerCount || 0,
+          wordCount: r.wordCount || 0
         };
       })
     );
@@ -200,7 +201,8 @@ export async function generateAIFeedback(
       questionText: r.questionText || '',
       transcript: r.transcript || '',
       delay: r.delay || 0,
-      fillerCount: r.fillerCount || 0
+      fillerCount: r.fillerCount || 0,
+      wordCount: r.wordCount || 0
     }));
   }
 
@@ -309,7 +311,11 @@ export async function generateNextAIQuestion(history = [], context = "General Hi
   });
 
   if (data && typeof data.question === 'string') {
-    return data.question;
+    return {
+      question: data.question,
+      shouldEnd: Boolean(data.shouldEnd),
+      endReason: data.endReason || null
+    };
   }
 
   const fallbackQuestions = [
@@ -319,7 +325,11 @@ export async function generateNextAIQuestion(history = [], context = "General Hi
     "Could you tell me more about your experience handling conflict or tight deadlines in a team?",
     "If you had another month to work on your latest project, what would you improve or refactor?"
   ];
-  return fallbackQuestions[Math.min(history.length, fallbackQuestions.length - 1)];
+  return {
+    question: fallbackQuestions[Math.min(history.length, fallbackQuestions.length - 1)],
+    shouldEnd: false,
+    endReason: null
+  };
 }
 
 export async function generateFollowupChallenge(previousQuestion = '', previousAnswer = '', difficulty = 'medium', examples = "") {

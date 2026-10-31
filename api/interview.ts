@@ -174,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!question) {
         return sendJson(502, { error: 'Failed to generate next question', reasonCode: 'ERR_LLM_NEXT_QUESTION_FAILED' });
       }
-      return sendJson(200, { question });
+      return sendJson(200, question);
     }
 
     // Action 3: followup
@@ -217,7 +217,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         rubric: Array.isArray(r?.rubric) ? r.rubric.slice(0, 5).map((item: any) => String(item).slice(0, 300)) : undefined,
         transcript: String(r?.transcript || '').slice(0, 1000),
         delay: typeof r?.delay === 'number' ? r.delay : 0,
-        fillerCount: typeof r?.fillerCount === 'number' ? r.fillerCount : 0
+        fillerCount: typeof r?.fillerCount === 'number' ? r.fillerCount : 0,
+        wordCount: typeof r?.wordCount === 'number' ? r.wordCount : 0
       })) : [];
 
       const result = await generateFeedbackServer(transcript, delay, fillerCount, confidenceScore, responses);

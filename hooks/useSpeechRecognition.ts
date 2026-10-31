@@ -39,8 +39,11 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 1;
+    // The browser's locale can materially improve recognition for regional
+    // accents. Fall back to US English when the locale is unavailable.
+    const browserLocale = typeof navigator !== 'undefined' ? navigator.language : '';
+    recognition.lang = browserLocale && /^en(-|$)/i.test(browserLocale) ? browserLocale : 'en-US';
+    recognition.maxAlternatives = 3;
 
     recognition.onstart = () => {
       console.log('[STT] Started');
@@ -61,10 +64,12 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const result = event.results[i];
+        const bestAlternative = result[0];
+        if (!bestAlternative?.transcript?.trim()) continue;
         if (result.isFinal) {
-          finalTranscript += result[0].transcript;
+          finalTranscript += bestAlternative.transcript;
         } else {
-          currentInterim += result[0].transcript;
+          currentInterim += bestAlternative.transcript;
         }
       }
 

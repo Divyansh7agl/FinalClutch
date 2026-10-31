@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { SimulationMode, QuestionData, ResponseMetric, PerformanceMetrics, CustomContext } from '../types';
 import { QUESTIONS, FILLER_WORDS, SCORING } from '../constants';
-import PressureMeter from './PressureMeter';
 import Logo from './Logo';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { generateAIQuestions, generateNextAIQuestion, generateFollowupChallenge, getLastApiError } from '../src/utils/aiFeedback';
@@ -24,7 +23,15 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [isAISpeaking, setIsAISpeaking] = useState(false);
+  const [interviewStage, setInterviewStage] = useState<'lobby' | 'interview' | 'candidate-questions'>('lobby');
+  const [isPausePending, setIsPausePending] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const [aiInterviewHistory, setAiInterviewHistory] = useState<{ question: string; answer: string }[]>([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
+  const isAIActive = mode === 'ai-interview';
+  const isCustomActive = mode === 'custom';
+  const isFollowupActive = mode === 'followup';
 
   const {
     transcript,
@@ -40,9 +47,14 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
   const responsesRef = useRef<ResponseMetric[]>([]);
   const questionStartRef = useRef<number>(Date.now());
   const micActivationRef = useRef<number | null>(null);
-  const transcriptEndRef = useRef<HTMLDivElement>(null);
   const lastSpeechActivityRef = useRef<number>(Date.now());
+  const autoSubmitTimerRef = useRef<number | null>(null);
+  const responseSubmittingRef = useRef(false);
   const hasInitializedRef = useRef(false);
+  const sessionStartedAtRef = useRef(Date.now());
+  const MAX_AI_SESSION_SECONDS = 25 * 60;
+  const MIN_AI_ROUNDS = 6;
+  const MAX_AI_ROUNDS = 12;
 
 
 
@@ -141,11 +153,6 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
   }, []);
 
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [transcript, interimTranscript]);
-
-
-  useEffect(() => {
     if (isListening) {
       lastSpeechActivityRef.current = Date.now();
     }
@@ -181,7 +188,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         const difficulty = customContext?.difficulty || 'medium';
 
         if (mode === 'ai-interview' || mode === 'custom') {
-          const firstQuestion = await generateNextAIQuestion([], combinedContext, 'groq', difficulty);
+          const firstDecision = await generateNextAIQuestion([], combinedContext, 'groq', difficulty);
+          const firstQuestion = firstDecision.question;
           const apiErr = getLastApiError();
           if (apiErr) {
             console.warn(`[ClutchAI] AI Interview question generation fell back to offline mode (${apiErr.message}, status ${apiErr.status}, code ${apiErr.reasonCode}).`);
@@ -201,10 +209,6 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         }
         setQuestions(qs);
 
-        // Speak the first question if in AI, Custom, or Followup mode
-        if ((mode === 'ai-interview' || mode === 'custom' || mode === 'followup') && qs.length > 0) {
-          setTimeout(() => speakQuestion(qs[0].text), 1500);
-        }
       } catch (err) {
         console.error("AI question generation failed:", err);
         const shuffled = [...QUESTIONS].sort(() => Math.random() - 0.5);
@@ -253,6 +257,8 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     }
 
     const totalFillers = responses.reduce((acc, r) => acc + r.fillerCount, 0);
+    const totalWords = responses.reduce((acc, r) => acc + r.wordCount, 0);
+    const fillerRate = totalWords > 0 ? totalFillers / totalWords : 0;
     const avgDelay = responses.reduce((acc, r) => acc + r.delay, 0) / responses.length;
     const avgWordCount = responses.reduce((acc, r) => acc + r.wordCount, 0) / responses.length;
 
@@ -265,8 +271,13 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       if (matches) logicHits += matches.length;
     });
 
-    let clarity = 100 - (totalFillers * 8);
-    let composure = 100 - (avgDelay / 150);
+    const speechMechanics = Math.max(0, Math.min(100,
+      100
+      - Math.min(45, fillerRate * 1000)
+      - Math.min(35, Math.max(0, avgDelay - 1500) / 180)
+    ));
+    let clarity = Math.max(20, Math.min(100, speechMechanics));
+    let composure = Math.max(20, Math.min(100, 100 - (Math.max(0, avgDelay - 1000) / 120)));
 
     // Structure (Logic) now considers word count AND logical transitions
     const wordCountScore = avgWordCount > SCORING.MIN_WORD_COUNT ? 70 : (avgWordCount / SCORING.MIN_WORD_COUNT) * 70;
@@ -277,7 +288,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     composure = Math.max(20, Math.min(100, composure));
     structure = Math.max(20, Math.min(100, structure));
 
-    let basePressure = (100 - clarity) * 0.4 + (100 - composure) * 0.4 + (100 - structure) * 0.2;
+    let basePressure = (100 - clarity) * 0.25 + (100 - composure) * 0.45 + (100 - structure) * 0.3;
     if (mode === 'panic') basePressure *= SCORING.PANIC_MULTIPLIER;
     const confidence = Math.max(0, Math.min(100, 100 - basePressure));
 
@@ -289,18 +300,41 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       structure: Math.round(structure),
       confidence: Math.round(confidence),
       fillerCount: totalFillers,
+      fillerRate: Number(fillerRate.toFixed(4)),
+      totalWords,
+      speechMechanics: Math.round(speechMechanics),
       avgDelay: Math.round(avgDelay),
       transcript: combinedTranscriptFinal,
       responses: responses
     });
   }, [mode, onComplete]);
 
-  const nextQuestion = useCallback(async () => {
+  useEffect(() => {
+    if (!isConversational) return;
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - sessionStartedAtRef.current) / 1000);
+      setElapsedSeconds(elapsed);
+      if (isAIActive && elapsed >= MAX_AI_SESSION_SECONDS) {
+        stopListening();
+        calculateFinalResults();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isConversational, isAIActive, stopListening, calculateFinalResults]);
+
+  const advanceQuestion = useCallback(async () => {
     const lastResponse = processResponse();
     stopListening();
 
     const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
-    const limit = isConversational ? 5 : questions.length;
+    const limit = isAIActive ? MAX_AI_ROUNDS : isConversational ? 5 : questions.length;
+
+    if (currentQuestionIdx >= limit - 1 && mode !== 'panic') {
+      resetTranscript();
+      setInterviewStage('candidate-questions');
+      speakQuestion("That's all the questions I have. Before we finish, what questions would you like to ask me?");
+      return;
+    }
 
     if (isConversational && currentQuestionIdx < limit - 1) {
       setIsAIThinking(true);
@@ -329,7 +363,12 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           const combinedContext = mode === 'custom' && customContext
             ? `Interview for the role of ${customContext.role} on the topic of ${customContext.topic}${resumeSuffix}`
             : `General Professional Interview${resumeSuffix}`;
-          nextQ = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
+          const nextDecision = await generateNextAIQuestion(newHistory, combinedContext, 'groq', difficulty);
+          if (isAIActive && newHistory.length >= MIN_AI_ROUNDS && nextDecision.shouldEnd) {
+            calculateFinalResults();
+            return;
+          }
+          nextQ = nextDecision.question;
         }
         const nextQuestionData: QuestionData = { id: `ai-${Date.now()}`, text: nextQ };
 
@@ -356,16 +395,78 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
       resetTranscript();
       questionStartRef.current = Date.now();
       micActivationRef.current = null;
-    } else {
-      calculateFinalResults();
-    }
+    } else calculateFinalResults();
   }, [currentQuestionIdx, questions, processResponse, calculateFinalResults, stopListening, resetTranscript, mode, aiInterviewHistory, speakQuestion, customContext]);
 
+  const nextQuestion = useCallback(() => {
+    if (responseSubmittingRef.current) return;
+    responseSubmittingRef.current = true;
+    void advanceQuestion().finally(() => {
+      responseSubmittingRef.current = false;
+    });
+  }, [advanceQuestion]);
+
+  useEffect(() => {
+    if (autoSubmitTimerRef.current !== null) {
+      window.clearTimeout(autoSubmitTimerRef.current);
+      autoSubmitTimerRef.current = null;
+    }
+
+    const answerText = `${transcript} ${interimTranscript}`.trim();
+    const shouldAutoSubmit = interviewStage === 'interview'
+      && mode !== 'panic'
+      && isListening
+      && !isAISpeaking
+      && !isAIThinking
+      && Boolean(answerText);
+
+    if (!shouldAutoSubmit) return;
+
+    setIsPausePending(true);
+    autoSubmitTimerRef.current = window.setTimeout(() => {
+      autoSubmitTimerRef.current = null;
+      setIsPausePending(false);
+      if (isListening && !isAISpeaking && !isAIThinking && `${transcript} ${interimTranscript}`.trim()) {
+        nextQuestion();
+      }
+    }, 4000);
+
+    return () => {
+      if (autoSubmitTimerRef.current !== null) {
+        window.clearTimeout(autoSubmitTimerRef.current);
+        autoSubmitTimerRef.current = null;
+      }
+      setIsPausePending(false);
+    };
+  }, [transcript, interimTranscript, interviewStage, mode, isListening, isAISpeaking, isAIThinking, nextQuestion]);
+
   const endSessionEarly = useCallback(() => {
+    if (responseSubmittingRef.current) return;
+    responseSubmittingRef.current = true;
     processResponse();
     stopListening();
     calculateFinalResults();
+    responseSubmittingRef.current = false;
   }, [processResponse, stopListening, calculateFinalResults]);
+
+  const startInterview = useCallback(() => {
+    setInterviewStage('interview');
+    sessionStartedAtRef.current = Date.now();
+    questionStartRef.current = Date.now();
+    micActivationRef.current = null;
+    const opening = `Hi, thanks for joining me today. I'll ask you a few questions about your experience and problem-solving approach. Take a moment to think before answering. ${questions[0]?.text || ''}`;
+    if (isAIActive || isCustomActive || isFollowupActive) {
+      speakQuestion(opening);
+    } else {
+      startListening();
+    }
+  }, [questions, isAIActive, isCustomActive, isFollowupActive, speakQuestion, startListening]);
+
+  const finishCandidateQuestions = useCallback(() => {
+    stopListening();
+    resetTranscript();
+    calculateFinalResults();
+  }, [stopListening, resetTranscript, calculateFinalResults]);
 
   useEffect(() => {
     let interval: any;
@@ -504,13 +605,51 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
     );
   }
 
-  const isConversational = mode === 'ai-interview' || mode === 'custom' || mode === 'followup';
-  const isAIActive = mode === 'ai-interview';
-  const isCustomActive = mode === 'custom';
-  const isFollowupActive = mode === 'followup';
+  if (interviewStage === 'lobby') {
+    const interviewerRole = customContext?.role || (mode === 'viva' ? 'Technical Interviewer' : 'Senior Hiring Manager');
+    const interviewType = mode === 'panic' ? 'Rapid-response practice interview' : mode === 'followup' ? 'Deep-dive technical interview' : 'Structured practice interview';
+    return (
+      <div className="flex items-center justify-center h-full p-6 bg-[#0a0c10] relative overflow-hidden">
+        <div className="absolute inset-0 bg-emerald-500/[0.03] pointer-events-none" />
+        <div className="relative z-10 w-full max-w-2xl rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 md:p-12 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-center gap-4 mb-10">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-xl font-black text-white">MC</div>
+            <div>
+              <p className="text-white font-bold text-lg">Maya Chen</p>
+              <p className="text-slate-400 text-sm">{interviewerRole}</p>
+            </div>
+            <span className="ml-auto rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300">Ready</span>
+          </div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-400 font-bold mb-3">{interviewType}</p>
+          <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-5">Your interview is ready.</h1>
+          <p className="text-slate-400 leading-relaxed mb-8">
+            Make yourself comfortable. Maya will introduce the interview, ask follow-up questions, and leave time for your questions at the end.
+          </p>
+          <div className="grid grid-cols-3 gap-3 mb-10">
+            {['Camera check', 'Live conversation', 'Feedback after'].map(item => (
+              <div key={item} className="rounded-xl border border-white/8 bg-black/20 p-3 text-center text-[10px] uppercase tracking-wider text-slate-400">{item}</div>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onQuit} className="flex-1 rounded-xl border border-white/10 px-5 py-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-white hover:border-white/20">Back</button>
+            <button onClick={startInterview} className="flex-[2] rounded-xl bg-emerald-500 px-5 py-4 text-[11px] font-black uppercase tracking-widest text-emerald-950 transition hover:bg-emerald-400">Join interview</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isPanicShaking = mode === 'panic' && timeLeft < 10;
   const themeColor = isAIActive ? 'emerald' : isCustomActive ? 'orange' : isFollowupActive ? 'red' : 'blue';
-
+  const interviewPhase = currentQuestionIdx === 0
+    ? 'Opening & background'
+    : currentQuestionIdx <= 2
+      ? 'Experience & projects'
+      : currentQuestionIdx <= 5
+        ? 'Technical deep dive'
+        : currentQuestionIdx <= 7
+          ? 'Behavioral judgment'
+          : 'Closing assessment';
   return (
     <div className={`flex flex-col h-full bg-[#0a0c10] relative transition-all duration-500 ${isPanicShaking ? 'bg-red-950/20' : ''}`}>
       {/* Background Ambience */}
@@ -528,99 +667,170 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
         )}
       </div>
 
-      <div className="flex items-center justify-between p-8 relative z-10">
-        <button onClick={onQuit} className="text-slate-600 hover:text-white transition-colors font-black uppercase tracking-[0.3em] text-[10px]">Terminate Sim</button>
-        <div className={`text-center space-y-1 ${isPanicShaking ? 'animate-shake' : ''}`}>
-          <div className="flex justify-center mb-2">
-            <Logo size="sm" />
-          </div>
-          <div className={`text-5xl font-black tabular-nums tracking-tighter ${timeLeft < 10 && mode === 'panic' ? 'text-red-500' : 'text-white'}`}>
-            {mode === 'panic' ? timeLeft : `${currentQuestionIdx + 1}/${isConversational ? 5 : 3}`}
-          </div>
-          <div className="text-[10px] uppercase font-bold tracking-[0.4em] text-slate-600">
-            {mode === 'panic' ? 'Time Remaining' : 'Protocol Progression'}
+      <header className="flex items-center justify-between px-6 py-4 md:px-10 relative z-10 border-b border-white/5 bg-[#0a0c10]/70 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
+          <button onClick={onQuit} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition hover:border-white/20 hover:text-white">Leave</button>
+          <div className="hidden sm:block h-7 w-px bg-white/10" />
+          <div className="hidden sm:block">
+            <p className="text-xs font-bold text-white">Practice interview</p>
+            <p className="text-[9px] uppercase tracking-widest text-slate-600">Private session</p>
           </div>
         </div>
-          <div className={`px-3 py-1 border rounded-md text-[10px] font-black tracking-widest uppercase ${isAIActive ? 'border-emerald-500/20 text-emerald-500' : isCustomActive ? 'border-orange-500/20 text-orange-500' : isFollowupActive ? 'border-red-500/20 text-red-500' : 'border-blue-500/20 text-blue-500'}`}>
-            {isAIActive ? 'Neural.Feedback.Active' : isCustomActive ? 'Custom.Protocol.Active' : isFollowupActive ? 'Trap.Mode.Active' : 'Live.Link'}
+        <div className={`flex items-center gap-3 ${isPanicShaking ? 'animate-shake' : ''}`}>
+          <div className="hidden md:block"><Logo size="sm" /></div>
+          <div className={`text-2xl md:text-3xl font-black tabular-nums tracking-tight ${timeLeft < 10 && mode === 'panic' ? 'text-red-500' : 'text-white'}`}>
+            {mode === 'panic'
+              ? timeLeft
+              : isAIActive
+                ? `${String(Math.floor(elapsedSeconds / 60)).padStart(2, '0')}:${String(elapsedSeconds % 60).padStart(2, '0')}`
+                : `${currentQuestionIdx + 1}/${isConversational ? 5 : 3}`}
+          </div>
+          <div className="hidden sm:block text-[9px] uppercase font-bold tracking-[0.25em] text-slate-600">
+            {mode === 'panic' ? 'Time remaining' : isAIActive ? 'Interview time' : 'Question'}
+          </div>
+          {isAIActive && (
+            <span className="hidden lg:inline rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[9px] uppercase tracking-widest text-emerald-300">{interviewPhase}</span>
+          )}
         </div>
-      </div>
+        <div className={`hidden md:block rounded-full border px-3 py-1 text-[9px] font-bold uppercase tracking-widest ${isAIActive ? 'border-emerald-500/20 text-emerald-300' : isCustomActive ? 'border-orange-500/20 text-orange-300' : isFollowupActive ? 'border-red-500/20 text-red-300' : 'border-blue-500/20 text-blue-300'}`}>
+          {isAIActive ? 'Maya Chen' : isCustomActive ? `${customContext?.role || 'Role interview'}` : 'Live interview'}
+        </div>
+      </header>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 px-12 pb-16 overflow-y-auto relative z-10">
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 px-5 py-5 md:px-10 md:py-6 pb-36 overflow-y-auto lg:overflow-hidden relative z-10">
         {/* Main Content Area */}
-        <div className="lg:col-span-8 flex flex-col justify-start pt-8 space-y-8">
-          <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-1000" key={currentQuestionIdx}>
-            <div className="inline-flex items-center space-x-2">
+        <div className={showTranscript
+          ? 'lg:col-span-7 flex flex-col justify-center space-y-5'
+          : 'hidden'
+        }>
+          <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-700" key={currentQuestionIdx}>
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center space-x-2">
               <span className={`w-1.5 h-1.5 rounded-full ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : isFollowupActive ? 'bg-red-500' : 'bg-blue-500'}`} />
-              <span className={`${isAIActive ? 'text-emerald-500' : isCustomActive ? 'text-orange-500' : isFollowupActive ? 'text-red-500' : 'text-blue-500'} font-black uppercase tracking-[0.4em] text-[11px]`}>
-                {isAIActive ? 'AI Conversational Agent' : isCustomActive ? `Neural Expert: ${customContext?.role}` : isFollowupActive ? 'Adversarial Interrogator' : 'Neural Challenge Alpha'}
+              <span className={`${isAIActive ? 'text-emerald-400' : isCustomActive ? 'text-orange-400' : isFollowupActive ? 'text-red-400' : 'text-blue-400'} font-bold uppercase tracking-[0.25em] text-[10px]`}>
+                {isAIActive ? 'Maya Chen · Senior interviewer' : isCustomActive ? `${customContext?.role || 'Role interviewer'}` : isFollowupActive ? 'Senior technical interviewer' : 'Technical interviewer'}
               </span>
+              </div>
+              <span className="text-[10px] font-medium text-slate-600">{isListening ? 'Your turn' : isAISpeaking ? 'Interviewer speaking' : 'Stand by'}</span>
             </div>
-            <h2 className={`text-3xl md:text-4xl lg:text-5xl font-black leading-[1.2] text-white tracking-tight max-w-4xl break-words ${isAISpeaking ? 'animate-pulse' : ''}`}>
-              {isAIThinking ? (
-                <span className="text-slate-500 text-2xl italic">Analyzing response and generating follow-up...</span>
-              ) : (
-                questions[currentQuestionIdx]?.text
-              )}
-            </h2>
-            {isAISpeaking && (
-              <div className={`flex items-center space-x-2 ${isAIActive ? 'text-emerald-500' : isCustomActive ? 'text-orange-500' : 'text-blue-500'} font-bold text-[10px] uppercase tracking-widest`}>
-                <span className="flex space-x-1">
-                  <span className={`w-1 h-3 ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : 'bg-blue-500'} animate-bounce`} style={{ animationDelay: '0ms' }} />
-                  <span className={`w-1 h-3 ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : 'bg-blue-500'} animate-bounce`} style={{ animationDelay: '100ms' }} />
-                  <span className={`w-1 h-3 ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : 'bg-blue-500'} animate-bounce`} style={{ animationDelay: '200ms' }} />
-                </span>
-                <span>AI is speaking...</span>
+            {showTranscript ? (
+              <>
+                <h2 className={`max-w-4xl text-3xl font-black leading-[1.15] tracking-tight text-white md:text-4xl lg:text-5xl ${isAISpeaking ? 'opacity-90' : ''}`}>
+                  {interviewStage === 'candidate-questions'
+                    ? 'Before we finish, what questions would you like to ask Maya?'
+                    : questions[currentQuestionIdx]?.text || 'Maya is speaking...'}
+                </h2>
+                <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] ${isAIActive ? 'text-emerald-400' : isCustomActive ? 'text-orange-400' : isFollowupActive ? 'text-red-400' : 'text-blue-400'}`}>
+                  {isAIThinking ? (
+                    <span className="text-slate-500 normal-case tracking-normal italic">Maya is preparing a follow-up...</span>
+                  ) : isPausePending ? (
+                    <span className="text-amber-300 normal-case tracking-normal">Take your time. Continue when you’re ready.</span>
+                  ) : isAISpeaking ? (
+                    <>
+                      <span className="flex space-x-1">
+                        <span className="h-3 w-1 animate-bounce bg-current" style={{ animationDelay: '0ms' }} />
+                        <span className="h-3 w-1 animate-bounce bg-current" style={{ animationDelay: '100ms' }} />
+                        <span className="h-3 w-1 animate-bounce bg-current" style={{ animationDelay: '200ms' }} />
+                      </span>
+                      <span>Maya is speaking</span>
+                    </>
+                  ) : (
+                    <span className="normal-case tracking-normal">Your answer will be captured automatically.</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={`flex items-center gap-2 text-[10px] font-semibold ${isAIActive ? 'text-emerald-400' : isCustomActive ? 'text-orange-400' : isFollowupActive ? 'text-red-400' : 'text-blue-400'}`}>
+                {isAIThinking ? (
+                  <span className="text-slate-500 italic">Maya is preparing a follow-up...</span>
+                ) : isPausePending ? (
+                  <span className="text-amber-300">Take your time. Continue when you’re ready.</span>
+                ) : isAISpeaking ? (
+                  <>
+                    <span className="flex space-x-1">
+                      <span className="h-3 w-1 animate-bounce bg-current" style={{ animationDelay: '0ms' }} />
+                      <span className="h-3 w-1 animate-bounce bg-current" style={{ animationDelay: '100ms' }} />
+                      <span className="h-3 w-1 animate-bounce bg-current" style={{ animationDelay: '200ms' }} />
+                    </span>
+                    <span>Maya is speaking</span>
+                  </>
+                ) : (
+                  <span>Your answer will be captured automatically.</span>
+                )}
               </div>
             )}
           </div>
 
-          {/* Transcript Terminal */}
-          <div className={`relative max-w-4xl w-full bg-black/40 border border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-3xl transition-all duration-700 ${isListening ? `ring-1 ${isAIActive ? 'ring-emerald-500/30' : isCustomActive ? 'ring-orange-500/30' : 'ring-blue-500/30'}` : 'opacity-60 grayscale'}`}>
-            <div className="absolute top-0 left-0 right-0 p-4 bg-white/[0.03] border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`w-2 h-2 rounded-full ${isListening ? 'bg-red-500 animate-pulse' : 'bg-slate-700'}`} />
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Audio Telemetry Stream</span>
+          {showTranscript && (
+            <div className={`relative w-full bg-black/30 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-3xl transition-all duration-500 ${isListening ? `ring-1 ${isAIActive ? 'ring-emerald-500/30' : isCustomActive ? 'ring-orange-500/30' : 'ring-blue-500/30'}` : 'opacity-70'}`}>
+              <div className="p-4 bg-white/[0.03] border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-2 h-2 rounded-full ${isListening ? 'bg-red-500 animate-pulse' : 'bg-slate-700'}`} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Interview text</span>
+                </div>
+                <span className="text-[10px] text-slate-600">Only visible to you</span>
               </div>
-              <span className="text-[10px] font-mono text-slate-600">ID: CLUTCH-SIM-TX</span>
-            </div>
-            <div className="p-8 h-48 overflow-y-auto font-mono text-base pt-16 scrollbar-hide">
-              <div className="text-slate-400 leading-relaxed italic">
-                {!transcript && !interimTranscript && isListening && (
-                  <span className={`${isAIActive ? 'text-emerald-500/50' : isCustomActive ? 'text-orange-500/50' : 'text-blue-500/50'} animate-pulse font-black uppercase tracking-widest text-[10px]`}>
-                    Listening for system input...
-                  </span>
-                )}
-                {transcript}
-                <span className={`${isAIActive ? 'text-emerald-400' : isCustomActive ? 'text-orange-400' : 'text-blue-400'} font-bold ml-1`}> {interimTranscript}</span>
-                {isListening && <span className={`inline-block w-2.5 h-5 ml-1 animate-pulse align-middle ${isAIActive ? 'bg-emerald-500' : isCustomActive ? 'bg-orange-500' : 'bg-blue-500'}`} />}
+              <div className="max-h-96 overflow-y-auto p-6 text-sm leading-relaxed">
+                <div>
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">Your answer</p>
+                  {!transcript && !interimTranscript ? (
+                    <span className="text-slate-600 italic">{isListening ? 'Listening for your answer...' : 'Your transcript will appear here.'}</span>
+                  ) : (
+                    <>
+                      <span className="text-slate-300">{transcript}</span>
+                      <span className={`${isAIActive ? 'text-emerald-400' : isCustomActive ? 'text-orange-400' : 'text-blue-400'} font-semibold`}> {interimTranscript}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div ref={transcriptEndRef} />
             </div>
-          </div>
+          )}
+
         </div>
 
-        {/* Gauge Area */}
-        <div className="lg:col-span-4 flex flex-col items-center justify-start pt-8 space-y-8 animate-in fade-in slide-in-from-right-4 duration-1000">
-          <div className="bg-white/[0.02] border border-white/5 p-12 rounded-[3.5rem] backdrop-blur-2xl shadow-2xl relative overflow-hidden group">
-            <div className={`absolute inset-0 transition-colors ${isAIActive ? 'bg-emerald-500/[0.02] group-hover:bg-emerald-500/[0.04]' : isCustomActive ? 'bg-orange-500/[0.02] group-hover:bg-orange-500/[0.04]' : 'bg-blue-500/[0.02] group-hover:bg-blue-500/[0.04]'}`} />
-            <PressureMeter score={pressureScore} />
-            <div className="mt-4 text-center">
-              <p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.5em]">Stress Threshold Gauge</p>
+        {/* Interviewer presence */}
+        <div className={showTranscript
+          ? 'lg:col-span-5 flex flex-col justify-center gap-3 animate-in fade-in slide-in-from-right-4 duration-700'
+          : 'lg:col-span-12 grid grid-cols-1 items-center gap-6 md:grid-cols-2 md:px-12 lg:px-20 animate-in fade-in duration-700'
+        }>
+          {!showTranscript && (
+            <div className="w-full max-w-2xl justify-self-end bg-white/[0.04] border border-white/10 p-4 rounded-3xl backdrop-blur-2xl shadow-2xl">
+              <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950">
+                <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 flex items-center justify-center text-2xl font-black text-white ${isAISpeaking ? 'ring-4 ring-emerald-400/40 animate-pulse' : ''}`}>MC</div>
+                <span className="absolute bottom-3 left-3 rounded-full bg-black/50 px-2 py-1 text-[9px] uppercase tracking-widest text-slate-300">{isAISpeaking ? 'Speaking' : isListening ? 'Listening' : 'Waiting'}</span>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="truncate text-sm font-bold text-white">Maya Chen</p>
+                <span className="hidden text-[8px] uppercase tracking-widest text-slate-600 xl:inline">Interviewer</span>
+              </div>
             </div>
+          )}
+          <div className={showTranscript ? '' : 'w-full max-w-2xl justify-self-start'}>
+            <CameraFeed compact accentColor={isFollowupActive ? 'red' : isAIActive ? 'emerald' : isCustomActive ? 'orange' : 'blue'} />
           </div>
         </div>
-      </div>
+      </main>
 
       {/* Control Bar */}
-      <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center space-y-8 z-20">
-        <div className="flex items-center space-x-8">
-          {/* Camera self-view */}
-          <CameraFeed accentColor={isFollowupActive ? 'red' : isAIActive ? 'emerald' : isCustomActive ? 'orange' : 'blue'} />
+      <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-white/10 bg-[#0a0c10]/90 px-5 py-4 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3 md:gap-4">
+          <button
+            onClick={() => setShowTranscript(value => !value)}
+            aria-pressed={showTranscript}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-[10px] font-black uppercase tracking-widest shadow-lg transition-all ${showTranscript
+              ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200 shadow-emerald-500/10'
+              : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:border-emerald-300/70 hover:bg-emerald-500/20 hover:text-white'
+            }`}
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16M4 12h16M4 19h10" />
+            </svg>
+            {showTranscript ? 'Hide transcript' : 'Show transcript'}
+          </button>
           <button
             onClick={toggleMic}
             disabled={isAISpeaking || isAIThinking}
-            className={`p-10 rounded-full transition-all duration-700 transform relative ${(isAISpeaking || isAIThinking)
+            className={`p-5 md:p-6 rounded-full transition-all duration-500 transform relative ${(isAISpeaking || isAIThinking)
               ? 'bg-slate-800 opacity-50 cursor-not-allowed'
               : isListening
                 ? 'bg-red-600 scale-110 rotate-90 shadow-[0_0_80px_rgba(220,38,38,0.5)]'
@@ -632,7 +842,7 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
               }`}
           >
             <div className="absolute inset-0 rounded-full bg-white/10 animate-ping opacity-20 pointer-events-none" />
-            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {isListening ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               ) : (
@@ -641,25 +851,21 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
             </svg>
           </button>
 
-          {(mode === 'viva' || isConversational) && (
+          {interviewStage === 'candidate-questions' && (
             <button
-              onClick={nextQuestion}
-              disabled={isAISpeaking || isAIThinking || (!transcript && !interimTranscript)}
-              className={`group px-12 py-5 font-black rounded-2xl transition-all uppercase tracking-[0.3em] text-[11px] shadow-2xl flex items-center ${isAISpeaking || isAIThinking || (!transcript && !interimTranscript)
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : isAIActive
-                  ? 'bg-white text-black hover:bg-emerald-500 hover:text-white'
-                  : isCustomActive
-                    ? 'bg-white text-black hover:bg-orange-500 hover:text-white'
-                    : 'bg-white text-black hover:bg-blue-500 hover:text-white'
-                }`}
+              onClick={finishCandidateQuestions}
+              className="group px-6 py-3.5 bg-white text-black hover:bg-emerald-500 hover:text-white font-black rounded-xl transition-all uppercase tracking-[0.2em] text-[10px] shadow-xl"
             >
-              {isAIThinking ? 'AI Thinking...' : (currentQuestionIdx === (isConversational ? 4 : questions.length - 1) ? 'Complete Protocol' : 'Submit response')}
-              {!isAIThinking && (
-                <svg className="w-4 h-4 ml-3 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              )}
+              Finish interview
+            </button>
+          )}
+
+          {isAIActive && (
+            <button
+              onClick={endSessionEarly}
+              className="group px-10 py-4 border border-emerald-500/40 text-emerald-400 font-black rounded-2xl transition-all hover:bg-emerald-500 hover:text-white uppercase tracking-[0.3em] text-[10px] shadow-xl"
+            >
+              End Interview
             </button>
           )}
 
@@ -673,7 +879,11 @@ const Simulation: React.FC<SimulationProps> = ({ mode, customContext, onComplete
           )}
         </div>
 
-        <p className="text-[9px] font-black text-slate-700 uppercase tracking-[0.8em]">Encrypted Session Link: STABLE</p>
+        <div className="mt-3 flex w-full flex-col items-center gap-2">
+          <p className="text-center text-[9px] font-medium text-slate-600 uppercase tracking-[0.25em]">
+            {interviewStage === 'interview' ? 'Answer submits automatically after a short pause' : 'Private practice session · Feedback appears after you finish'}
+          </p>
+        </div>
       </div>
     </div>
   );
